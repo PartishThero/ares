@@ -1,4 +1,55 @@
 import { calculateMarsDistanceKm } from './coordinates.js';
+import { NASA_MARS_TREK_TARGETS } from '../data/nasaMarsTrek2000.js';
+
+let spatialFeatureIndex = null;
+function getSpatialFeatureIndex() {
+  if (spatialFeatureIndex) return spatialFeatureIndex;
+  spatialFeatureIndex = new Map();
+  for (const t of (NASA_MARS_TREK_TARGETS || [])) {
+    const [lon, lat] = t.coordinates;
+    const k = `${Math.floor(lon / 8)},${Math.floor(lat / 8)}`;
+    if (!spatialFeatureIndex.has(k)) spatialFeatureIndex.set(k, []);
+    spatialFeatureIndex.get(k).push(t);
+  }
+  return spatialFeatureIndex;
+}
+
+function getPlanetaryFeatureDelta(lon, lat) {
+  const index = getSpatialFeatureIndex();
+  const bx = Math.floor(lon / 8);
+  const by = Math.floor(lat / 8);
+  let delta = 0;
+
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      const bin = index.get(`${bx + dx},${by + dy}`);
+      if (!bin) continue;
+      for (const feat of bin) {
+        const cat = (feat.category || '').toLowerCase();
+        const isCrater = cat.includes('crater');
+        const isMons = cat.includes('mons') || cat.includes('peak');
+        if (!isCrater && !isMons) continue;
+
+        const dKm = calculateMarsDistanceKm([lon, lat], feat.coordinates);
+        const radiusKm = isMons ? 120 : feat.tier === 1 ? 45 : feat.tier === 2 ? 22 : 12;
+
+        if (dKm < radiusKm) {
+          if (isCrater) {
+            if (dKm < radiusKm * 0.7) {
+              delta += -1400 * (1 - dKm / (radiusKm * 0.7));
+            } else {
+              delta += 600 * Math.sin(((dKm - radiusKm * 0.7) / (radiusKm * 0.3)) * Math.PI);
+            }
+          } else if (isMons) {
+            delta += 4500 * Math.pow(1 - dKm / radiusKm, 1.4);
+          }
+          return delta;
+        }
+      }
+    }
+  }
+  return delta;
+}
 
 export function calculateSlopeDeg(elevation1, elevation2, distanceMeters) {
   if (distanceMeters <= 0.001) return 0;
@@ -28,19 +79,97 @@ export function estimateGaleElevation(lon, lat) {
 }
 
 export function estimateMarsElevation(lon, lat) {
-  // Gale Crater local micro-topography (~154 km diameter, center ~137.4° Lon, -4.6° Lat)
-  if (Math.abs(lon - 137.4) < 1.9 && Math.abs(lat - (-4.6)) < 1.9) {
-    const distFromPeak = calculateMarsDistanceKm([lon, lat], [137.85, -5.08]);
-    const floorElevation = -4520;
+  // Mars Crustal Dichotomy: Northern Lowlands vs Southern Highlands
+  let baseElev;
+  if (lat > 18) {
+    baseElev = -4200;
+  } else if (lat < -12) {
+    baseElev = 1800;
+  } else {
+    // Transition slope between -12° and +18° Lat
+    baseElev = -4200 + ((18 - lat) / 30) * 6000;
+  }
 
-    const moundDist = Math.max(0, 42 - distFromPeak);
-    const latFactor = Math.min(1.0, Math.max(0, (-lat - 4.65) / 0.15));
-    const moundElevation = moundDist > 0 ? (5020 * Math.pow(moundDist / 42, 1.4) * latFactor) : 0;
+  // Regional adjustment for Elysium Planitia / Aeolis lowland province (Lon 130° to 155°, Lat -7° to 15°)
+  // In real Mars MOLA datum, Elysium Planitia is an extensive volcanic/sedimentary lowland at ~ -2400m datum
+  let regionalElev = baseElev;
+  if (lon >= 130 && lon <= 155 && lat >= -7 && lat <= 15) {
+    const elyCenterLon = 142.0;
+    const elyCenterLat = 4.0;
+    const dEly = calculateMarsDistanceKm([lon, lat], [elyCenterLon, elyCenterLat]);
+    const maxREly = 650;
+    if (dEly < maxREly) {
+      const frac = 1 - (dEly / maxREly);
+      const smoothFrac = 0.5 * (1 - Math.cos(frac * Math.PI));
+      regionalElev = baseElev * (1 - smoothFrac) + (-2400) * smoothFrac;
+    }
+  }
 
-    const noise = (Math.sin(lon * 420.5) * Math.cos(lat * 380.2) * 10) +
-                  (Math.sin(lon * 1100.2 + lat * 950.4) * 5);
+  // Gale Crater Regional Topography (Floor datum ~ -4520m, Rim wall, Mount Sharp, and Companion Craters)
+  // Continuous C1 elevation model without artificial step discontinuities
+  const distGale = calculateMarsDistanceKm([lon, lat], [137.40, -4.60]);
+  let galeDelta = 0;
 
-    return Math.round(floorElevation + moundElevation + noise);
+  if (distGale < 110) {
+    if (distGale < 52) {
+      // Inside Gale Crater floor (-4520m)
+      const floorTarget = -4520 - regionalElev;
+      galeDelta += floorTarget;
+
+      // Mount Sharp central mound (rises south of lat -4.65°)
+      const distPeak = calculateMarsDistanceKm([lon, lat], [137.85, -5.08]);
+      const moundDist = Math.max(0, 36 - distPeak);
+      const latFactor = Math.min(1.0, Math.max(0, (-lat - 4.65) / 0.15));
+      const moundElevation = moundDist > 0 ? (5020 * Math.pow(moundDist / 36, 1.4) * latFactor) : 0;
+      galeDelta += moundElevation;
+    } else if (distGale < 77) {
+      // Gale Crater circular rim wall (rising steeply from -4520m up to -2100m)
+      const t = (distGale - 52) / 25;
+      const rimElev = -4520 + 2420 * Math.sin(t * Math.PI / 2);
+      galeDelta += (rimElev - regionalElev);
+    } else {
+      // Outer rim ramp transitioning down to regional plains
+      const t = (distGale - 77) / 33;
+      const rampElev = -2100 - 300 * Math.sin(t * Math.PI / 2);
+      const fade = Math.pow(1 - t, 2);
+      galeDelta += (rampElev - regionalElev) * fade;
+    }
+  }
+
+  // Prominent Eastern Companion Impact Crater at [138.80° Lon, -4.50° Lat], radius 14 km
+  const dCrater = calculateMarsDistanceKm([lon, lat], [138.80, -4.50]);
+  let craterDelta = 0;
+  if (dCrater < 22) {
+    if (dCrater < 10) {
+      craterDelta = -3800 - regionalElev;
+    } else if (dCrater < 14) {
+      const t = (dCrater - 10) / 4;
+      const rimElev = -3800 + 2600 * t;
+      craterDelta = rimElev - regionalElev;
+    } else {
+      const t = (dCrater - 14) / 8;
+      const ejectaElev = -1200 - 1200 * t;
+      const fade = Math.pow(1 - t, 2);
+      craterDelta = (ejectaElev - regionalElev) * fade;
+    }
+  }
+
+  // Secondary Satellite Crater at [138.90° Lon, -5.25° Lat], radius 7 km
+  const dSat = calculateMarsDistanceKm([lon, lat], [138.90, -5.25]);
+  let satDelta = 0;
+  if (dSat < 12) {
+    if (dSat < 5) {
+      satDelta = -3500 - regionalElev;
+    } else if (dSat < 7) {
+      const t = (dSat - 5) / 2;
+      const rimElev = -3500 + 2100 * t;
+      satDelta = rimElev - regionalElev;
+    } else {
+      const t = (dSat - 7) / 5;
+      const ejectaElev = -1400 - 1000 * t;
+      const fade = Math.pow(1 - t, 2);
+      satDelta = (ejectaElev - regionalElev) * fade;
+    }
   }
 
   // Major planetary landmarks (MOLA topographic datum)
@@ -70,23 +199,16 @@ export function estimateMarsElevation(lon, lat) {
     }
   }
 
-  // Mars Crustal Dichotomy: Northern Lowlands vs Southern Highlands
-  let baseElev;
-  if (lat > 18) {
-    baseElev = -4200;
-  } else if (lat < -12) {
-    baseElev = 1800;
-  } else {
-    // Transition slope between -12° and +18° Lat
-    baseElev = -4200 + ((18 - lat) / 30) * 6000;
-  }
+  // Planetary feature deltas outside Gale Crater (Gale Crater features are modeled with high-resolution continuous models above)
+  const featureDelta = distGale < 110 ? 0 : getPlanetaryFeatureDelta(lon, lat);
 
-  // Realistic planetary roughness and cratered terrain noise
+  // Micro-relief and planetary roughness noise
   const noise = (Math.sin(lon * 0.05) * Math.cos(lat * 0.05) * 450) +
                 (Math.sin(lon * 0.25 + lat * 0.2) * 180) +
-                (Math.sin(lon * 2.1 - lat * 1.8) * 40);
+                (Math.sin(lon * 2.1 - lat * 1.8) * 40) +
+                (Math.sin(lon * 420.5) * Math.cos(lat * 380.2) * 8);
 
-  return Math.round(baseElev + landmarkDelta + noise);
+  return Math.round(regionalElev + galeDelta + craterDelta + satDelta + landmarkDelta + featureDelta + noise);
 }
 
 export function getGaleGeologicalContext(elevation, lon, lat) {
@@ -169,4 +291,30 @@ export function getGaleGeologicalContext(elevation, lon, lat) {
       hazardFactor: 0.20
     };
   }
+}
+
+/**
+ * Formats elevation into readable human/astronaut terms:
+ * Explains planetary MOLA areoid datum and calculates relative ground relief.
+ */
+export function formatReadableElevation(elevationM, baseElevationM = null) {
+  if (typeof elevationM !== 'number' || isNaN(elevationM)) return 'N/A';
+  
+  if (baseElevationM !== null && typeof baseElevationM === 'number') {
+    const diff = Math.round(elevationM - baseElevationM);
+    const sign = diff > 0 ? '+' : '';
+    return `${sign}${diff.toLocaleString()} m (Relief) · ${formatMolaDatum(elevationM)}`;
+  }
+  return formatMolaDatum(elevationM);
+}
+
+export function formatMolaDatum(elevationM) {
+  if (typeof elevationM !== 'number' || isNaN(elevationM)) return 'N/A';
+  if (elevationM === 0) return '0 m (Mars Areoid Datum)';
+  if (elevationM < 0) {
+    const absKm = (Math.abs(elevationM) / 1000).toFixed(1);
+    return `${elevationM.toLocaleString()} m MOLA (${absKm} km below datum)`;
+  }
+  const km = (elevationM / 1000).toFixed(1);
+  return `+${elevationM.toLocaleString()} m MOLA (+${km} km above datum)`;
 }

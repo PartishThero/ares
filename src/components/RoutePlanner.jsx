@@ -10,7 +10,8 @@ import {
   Flame, 
   Clock, 
   ArrowRight,
-  RotateCcw
+  RotateCcw,
+  Activity
 } from 'lucide-react';
 import { SCIENTIFIC_TARGETS } from '../data/scientificTargets';
 import { ROUTE_PROFILES } from '../algorithms/terrainCost';
@@ -247,6 +248,16 @@ export default function RoutePlanner({
                 {plannedRoute.metrics.hazardExposurePercent}%
               </span>
             </div>
+
+            <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
+              <span className="text-[10px] text-ares-text-muted block">NET CLIMB (ASCENT)</span>
+              <span className="text-sm font-bold text-ares-text">+{plannedRoute.metrics.elevationGainM} m</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
+              <span className="text-[10px] text-ares-text-muted block">START BASE DATUM</span>
+              <span className="text-sm font-bold text-ares-cyan">{plannedRoute.metrics.baseElevationM} m MOLA</span>
+            </div>
           </div>
 
           {routeScore && (
@@ -259,6 +270,46 @@ export default function RoutePlanner({
               </p>
               <div className="text-[9px] font-mono text-ares-text-muted pt-1 border-t border-ares-border/50 truncate">
                 {routeScore.formulaText}
+              </div>
+            </div>
+          )}
+
+          {plannedRoute.metrics.plssConsumables && (
+            <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border space-y-2">
+              <div className="flex items-center justify-between text-[10px] font-mono font-bold text-ares-text uppercase">
+                <div className="flex items-center space-x-1.5 text-ares-cyan">
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>NASA PLSS Flight Consumables</span>
+                </div>
+                <span className="text-ares-success">
+                  {plannedRoute.metrics.plssConsumables.suitMobilityMargin}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                <div className="p-1.5 rounded bg-ares-bg border border-ares-border">
+                  <span className="text-[9px] text-ares-text-muted block">OXYGEN DRAW</span>
+                  <span className="font-bold text-ares-text">
+                    {plannedRoute.metrics.plssConsumables.oxygenLiters} L ({plannedRoute.metrics.plssConsumables.oxygenKg} kg)
+                  </span>
+                </div>
+                <div className="p-1.5 rounded bg-ares-bg border border-ares-border">
+                  <span className="text-[9px] text-ares-text-muted block">COOLING SUBLIMATOR</span>
+                  <span className="font-bold text-ares-cyan">
+                    {plannedRoute.metrics.plssConsumables.coolingWaterKg} kg H₂O
+                  </span>
+                </div>
+                <div className="p-1.5 rounded bg-ares-bg border border-ares-border">
+                  <span className="text-[9px] text-ares-text-muted block">SUIT POWER DRAW</span>
+                  <span className="font-bold text-ares-warning">
+                    {plannedRoute.metrics.plssConsumables.batteryWh} Wh
+                  </span>
+                </div>
+                <div className="p-1.5 rounded bg-ares-bg border border-ares-border">
+                  <span className="text-[9px] text-ares-text-muted block">SAFE RETURN PNR</span>
+                  <span className="font-bold text-emerald-400">
+                    {plannedRoute.metrics.plssConsumables.pointOfSafeReturnKm} km marker
+                  </span>
+                </div>
               </div>
             </div>
           )}

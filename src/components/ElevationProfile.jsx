@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Mountain, TrendingUp, AlertTriangle, ChevronRight, Activity } from 'lucide-react';
+import { Mountain, TrendingUp, AlertTriangle, ChevronRight, Activity, Info, HelpCircle } from 'lucide-react';
 
 export default function ElevationProfile({ plannedRoute }) {
   const [hoverPoint, setHoverPoint] = useState(null);
+  const [elevationMode, setElevationMode] = useState('relative'); // 'relative' (default) or 'mola'
+  const [showExplainer, setShowExplainer] = useState(false);
   const containerRef = useRef(null);
 
   if (!plannedRoute?.elevationProfile || plannedRoute.elevationProfile.length < 2) {
@@ -21,13 +23,14 @@ export default function ElevationProfile({ plannedRoute }) {
 
   const profile = plannedRoute.elevationProfile;
   const totalDist = plannedRoute.metrics.totalDistanceKm || 1;
+  const baseElev = plannedRoute.metrics.baseElevationM ?? profile[0].elevationM;
   const minElev = plannedRoute.metrics.minElevationM;
   const maxElev = plannedRoute.metrics.maxElevationM;
   const elevRange = Math.max(50, maxElev - minElev);
 
   const width = 500;
   const height = 180;
-  const padLeft = 45;
+  const padLeft = 52;
   const padRight = 15;
   const padTop = 20;
   const padBottom = 30;
@@ -65,23 +68,88 @@ export default function ElevationProfile({ plannedRoute }) {
     setHoverPoint(closest);
   };
 
+  const formatYLabel = (elev) => {
+    if (elevationMode === 'relative') {
+      const rel = Math.round(elev - baseElev);
+      return `${rel >= 0 ? '+' : ''}${rel}m`;
+    }
+    return `${Math.round(elev)}m`;
+  };
+
   return (
-    <div className="h-full overflow-y-auto p-4 space-y-4 select-none">
+    <div className="h-full overflow-y-auto p-4 space-y-3.5 select-none font-mono">
       <div className="space-y-1 pb-2 border-b border-ares-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Mountain className="w-4 h-4 text-emerald-400" />
-            <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-ares-text">
-              Topographic Cross-Section (MOLA)
+            <h2 className="text-xs font-bold uppercase tracking-wider text-ares-text">
+              Topographic Cross-Section
             </h2>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-ares-surface-alt text-ares-cyan">
-            {plannedRoute.profileName}
-          </span>
+          <div className="flex items-center space-x-1.5">
+            <button
+              onClick={() => setShowExplainer(!showExplainer)}
+              className="text-[10px] text-ares-text-muted hover:text-ares-cyan flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded border border-ares-border hover:border-ares-cyan/50"
+              title="Why are Martian elevations negative?"
+            >
+              <HelpCircle className="w-3 h-3 text-ares-cyan" />
+              <span>Datum FAQ</span>
+            </button>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-ares-surface-alt text-ares-cyan">
+              {plannedRoute.profileName}
+            </span>
+          </div>
         </div>
-        <p className="text-xs text-ares-text-muted">
-          Continuous elevation profile with localized slope gradients and hazard markers along the EVA path.
+        <p className="text-[11px] text-ares-text-muted font-sans">
+          Topographic slope profile along the EVA path with least-elevation terrain routing.
         </p>
+      </div>
+
+      {showExplainer && (
+        <div className="p-3 rounded-xl bg-ares-cyan/10 border border-ares-cyan/30 text-xs text-ares-text space-y-1.5 leading-relaxed font-sans">
+          <div className="font-bold text-ares-cyan flex items-center gap-1 font-mono text-[11px]">
+            <Info className="w-3.5 h-3.5" />
+            <span>Why are Martian elevations negative?</span>
+          </div>
+          <p className="text-[11px] text-ares-text-muted">
+            Earth elevations reference <strong>sea level</strong> (0 m). Mars has no oceans, so NASA and the IAU defined the 0 m reference line (the <em>martian areoid</em>) at the planet's average equatorial radius (3,396.19 km) where atmospheric pressure is 610.5 Pa (the triple point of water).
+          </p>
+          <p className="text-[11px] text-ares-text-muted">
+            Giant impact basins like <strong>Gale Crater (-4.5 km)</strong>, <strong>Jezero (-2.5 km)</strong>, and <strong>Hellas (-7.2 km)</strong> sit deep below this global datum, which is why raw laser altimetry reads negative.
+          </p>
+          <p className="text-[11px] text-emerald-400">
+            Use the <strong>"Ground Relief"</strong> mode below to view practical climbing height (+m) relative to your departure base!
+          </p>
+        </div>
+      )}
+
+      {/* Mode toggle */}
+      <div className="flex items-center justify-between text-[11px] p-2 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
+        <span className="text-ares-text-muted text-[10px] uppercase font-bold">
+          Elevation Reference:
+        </span>
+        <div className="flex items-center bg-ares-bg rounded-lg p-0.5 border border-ares-border">
+          <button
+            onClick={() => setElevationMode('relative')}
+            className={`px-2 py-1 rounded text-[10px] transition-colors font-bold ${
+              elevationMode === 'relative'
+                ? 'bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg shadow-sm'
+                : 'text-ares-text-muted hover:text-ares-text'
+            }`}
+          >
+            Ground Relief (Base = 0m)
+          </button>
+          <button
+            onClick={() => setElevationMode('mola')}
+            className={`px-2 py-1 rounded text-[10px] transition-colors font-bold ${
+              elevationMode === 'mola'
+                ? 'bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg shadow-sm'
+                : 'text-ares-text-muted hover:text-ares-text'
+            }`}
+          >
+            MOLA Datum (Global)
+          </button>
+        </div>
       </div>
 
       <div 
@@ -103,14 +171,15 @@ export default function ElevationProfile({ plannedRoute }) {
           <line x1={padLeft} y1={padTop + chartH / 2} x2={padLeft + chartW} y2={padTop + chartH / 2} stroke="#2e343b" strokeDasharray="3,3" />
           <line x1={padLeft} y1={padTop + chartH} x2={padLeft + chartW} y2={padTop + chartH} stroke="#383c41" />
 
+          {/* Y-axis labels with formatYLabel */}
           <text x={padLeft - 6} y={padTop + 4} fill="#9a9a95" fontSize="8" fontFamily="monospace" textAnchor="end">
-            {maxElev}m
+            {formatYLabel(maxElev)}
           </text>
           <text x={padLeft - 6} y={padTop + chartH / 2 + 3} fill="#9a9a95" fontSize="8" fontFamily="monospace" textAnchor="end">
-            {Math.round(minElev + elevRange / 2)}m
+            {formatYLabel((maxElev + minElev) / 2)}
           </text>
           <text x={padLeft - 6} y={padTop + chartH + 3} fill="#9a9a95" fontSize="8" fontFamily="monospace" textAnchor="end">
-            {minElev}m
+            {formatYLabel(minElev)}
           </text>
 
           <text x={padLeft} y={padTop + chartH + 15} fill="#9a9a95" fontSize="8" fontFamily="monospace" textAnchor="start">
@@ -124,7 +193,6 @@ export default function ElevationProfile({ plannedRoute }) {
           </text>
 
           <path d={areaD} fill="url(#topoGradient)" />
-
           <path d={pathD} fill="none" stroke="#c47b50" strokeWidth="2.5" />
 
           {svgPoints.map((pt, idx) => {
@@ -174,8 +242,14 @@ export default function ElevationProfile({ plannedRoute }) {
               <span className="text-ares-cyan font-bold">{hoverPoint.distanceKm} km</span>
             </div>
             <div>
-              <span className="text-ares-text-muted text-[10px]">ELEV:</span>{' '}
-              <span className="text-emerald-400 font-bold">{hoverPoint.elevationM} m</span>
+              <span className="text-ares-text-muted text-[10px]">
+                {elevationMode === 'relative' ? 'RELIEF (AGL):' : 'MOLA DATUM:'}
+              </span>{' '}
+              <span className="text-emerald-400 font-bold">
+                {elevationMode === 'relative'
+                  ? `${Math.round(hoverPoint.elevationM - baseElev) >= 0 ? '+' : ''}${Math.round(hoverPoint.elevationM - baseElev)} m`
+                  : `${hoverPoint.elevationM} m`}
+              </span>
             </div>
             <div>
               <span className="text-ares-text-muted text-[10px]">SLOPE:</span>{' '}
@@ -206,20 +280,26 @@ export default function ElevationProfile({ plannedRoute }) {
         <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
           <span className="text-[10px] text-ares-text-muted block">TOTAL CLIMB (GAIN)</span>
           <span className="font-bold text-ares-text">+{plannedRoute.metrics.elevationGainM} m</span>
+          <span className="text-[10px] text-ares-text-muted/80 block mt-0.5">Vertical ascent</span>
         </div>
         <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
           <span className="text-[10px] text-ares-text-muted block">TOTAL DESCENT (LOSS)</span>
           <span className="font-bold text-ares-text">-{plannedRoute.metrics.elevationLossM} m</span>
+          <span className="text-[10px] text-ares-text-muted/80 block mt-0.5">Vertical descent</span>
         </div>
         <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
           <span className="text-[10px] text-ares-text-muted block">PEAK SLOPE GRADE</span>
           <span className={`font-bold ${plannedRoute.metrics.maxSlopeDeg > 15 ? 'text-ares-danger' : 'text-emerald-400'}`}>
             {plannedRoute.metrics.maxSlopeDeg}°
           </span>
+          <span className="text-[10px] text-ares-text-muted/80 block mt-0.5">
+            {plannedRoute.metrics.maxSlopeDeg <= 10 ? 'All nominal grades' : 'Requires zig-zagging'}
+          </span>
         </div>
         <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-          <span className="text-[10px] text-ares-text-muted block">AVERAGE SLOPE</span>
-          <span className="font-bold text-ares-text">{plannedRoute.metrics.avgSlopeDeg}°</span>
+          <span className="text-[10px] text-ares-text-muted block">START BASE DATUM</span>
+          <span className="font-bold text-ares-cyan">{baseElev} m</span>
+          <span className="text-[10px] text-ares-text-muted/80 block mt-0.5">Calibrated Ground Zero</span>
         </div>
       </div>
     </div>

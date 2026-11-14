@@ -58,6 +58,18 @@ export const HAZARD_ZONES = [
     maxSlope: 35,
     description: 'Steep scree-covered flank of central mountain exceeding 25° incline. Beyond certified EVA suit walking limits.',
     recommendedAction: 'Strict EVA exclusion zone for unassisted foot travel.'
+  },
+  {
+    id: 'hazard-eastern-crater-rim',
+    name: 'Eastern Rim Escarpment & Talus',
+    type: 'Steep Impact Crater Rim / Fall Hazard',
+    severity: 'Severe',
+    penaltyMultiplier: 18.0,
+    center: [138.8000, -4.5000],
+    radiusKm: 14.0,
+    maxSlope: 44,
+    description: 'Prominent 28-km impact crater with steep inner scarp walls and boulder talus. Traversing over the rim crest is impassable.',
+    recommendedAction: 'Mandatory detour around perimeter via northern low-elevation saddle pass at Lat -4.1°.'
   }
 ];
 

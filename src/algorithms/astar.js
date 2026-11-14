@@ -103,24 +103,27 @@ function aStarSegment(startCoord, destCoord, profile = ROUTE_PROFILES.SAFEST) {
     return [{ col: 0, row: 0, lon: startCoord[0], lat: startCoord[1], elevation: elev, hazard }];
   }
 
-  // Adaptive dynamic bounding box enclosing both points with safety buffer
+  // Adaptive dynamic bounding box enclosing both points with obstacle clearance buffer
   const minLon = Math.min(startCoord[0], destCoord[0]);
   const maxLon = Math.max(startCoord[0], destCoord[0]);
   const minLat = Math.min(startCoord[1], destCoord[1]);
   const maxLat = Math.max(startCoord[1], destCoord[1]);
 
-  const spanLon = Math.max(0.04, maxLon - minLon);
-  const spanLat = Math.max(0.04, maxLat - minLat);
-  const padLon = Math.max(spanLon * 0.30, 0.025);
-  const padLat = Math.max(spanLat * 0.30, 0.025);
+  const spanLon = maxLon - minLon;
+  const spanLat = maxLat - minLat;
+  const maxSpan = Math.max(spanLon, spanLat, 0.08);
+
+  // Dynamic padding scaled to traversal corridor ensures clearance around massive crater rims
+  const padLon = Math.max(spanLon * 0.35, maxSpan * 0.30, 0.22);
+  const padLat = Math.max(spanLat * 0.35, maxSpan * 0.30, 0.22);
 
   const bMinLon = Math.max(-180, minLon - padLon);
   const bMaxLon = Math.min(180, maxLon + padLon);
   const bMinLat = Math.max(-89.5, minLat - padLat);
   const bMaxLat = Math.min(89.5, maxLat + padLat);
 
-  const COLS = 50;
-  const ROWS = 50;
+  const COLS = 60;
+  const ROWS = 60;
 
   const toCol = (lon) => Math.max(0, Math.min(COLS - 1, Math.round(((lon - bMinLon) / (bMaxLon - bMinLon)) * (COLS - 1))));
   const toRow = (lat) => Math.max(0, Math.min(ROWS - 1, Math.round(((lat - bMinLat) / (bMaxLat - bMinLat)) * (ROWS - 1))));
@@ -277,6 +280,49 @@ function aStarSegment(startCoord, destCoord, profile = ROUTE_PROFILES.SAFEST) {
   return fallbackPath;
 }
 
+function catmullRom(p0, p1, p2, p3, t) {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  const f0 = -0.5 * t3 + t2 - 0.5 * t;
+  const f1 = 1.5 * t3 - 2.5 * t2 + 1.0;
+  const f2 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
+  const f3 = 0.5 * t3 - 0.5 * t2;
+  return [
+    p0[0] * f0 + p1[0] * f1 + p2[0] * f2 + p3[0] * f3,
+    p0[1] * f0 + p1[1] * f1 + p2[1] * f2 + p3[1] * f3
+  ];
+}
+
+function smoothTraverseCoordinates(rawNodes) {
+  if (rawNodes.length <= 4) return rawNodes.map((n) => [n.lon, n.lat]);
+
+  // Decimate collinear and minor zig-zag nodes while retaining key turns
+  const keyNodes = [rawNodes[0]];
+  const stride = Math.max(2, Math.floor(rawNodes.length / 16));
+  for (let i = stride; i < rawNodes.length - stride; i += stride) {
+    keyNodes.push(rawNodes[i]);
+  }
+  keyNodes.push(rawNodes[rawNodes.length - 1]);
+
+  const pts = [
+    [keyNodes[0].lon, keyNodes[0].lat],
+    ...keyNodes.map((n) => [n.lon, n.lat]),
+    [keyNodes[keyNodes.length - 1].lon, keyNodes[keyNodes.length - 1].lat]
+  ];
+
+  const smoothCoords = [];
+  const samples = 4;
+  for (let i = 0; i < keyNodes.length - 1; i++) {
+    for (let s = 0; s < samples; s++) {
+      const t = s / samples;
+      smoothCoords.push(catmullRom(pts[i], pts[i + 1], pts[i + 2], pts[i + 3], t));
+    }
+  }
+  smoothCoords.push([rawNodes[rawNodes.length - 1].lon, rawNodes[rawNodes.length - 1].lat]);
+
+  return smoothCoords;
+}
+
 export function planAresRoute(startCoord, destCoord, waypoints = [], profile = ROUTE_PROFILES.SAFEST) {
   const allStops = [startCoord, ...waypoints, destCoord];
   let rawNodes = [];
@@ -290,6 +336,9 @@ export function planAresRoute(startCoord, destCoord, waypoints = [], profile = R
     }
   }
 
+  // Generate smooth, continuous Any-Angle trajectory
+  const coordinates = smoothTraverseCoordinates(rawNodes);
+
   let totalDistanceKm = 0;
   let totalElevationGain = 0;
   let totalElevationLoss = 0;
@@ -299,25 +348,26 @@ export function planAresRoute(startCoord, destCoord, waypoints = [], profile = R
   let hazardExposureCount = 0;
 
   const elevationProfile = [];
-  const coordinates = [];
 
-  for (let i = 0; i < rawNodes.length; i++) {
-    const curr = rawNodes[i];
-    coordinates.push([curr.lon, curr.lat]);
+  for (let i = 0; i < coordinates.length; i++) {
+    const [cLon, cLat] = coordinates[i];
+    const elev = estimateGaleElevation(cLon, cLat);
+    const hazard = getCoordinateHazardFactor(cLon, cLat);
 
     let stepDistKm = 0;
     let stepSlopeDeg = 0;
 
     if (i > 0) {
-      const prev = rawNodes[i - 1];
-      stepDistKm = calculateMarsDistanceKm([prev.lon, prev.lat], [curr.lon, curr.lat]);
+      const [pLon, pLat] = coordinates[i - 1];
+      const prevElev = elevationProfile[i - 1].elevationM;
+      stepDistKm = calculateMarsDistanceKm([pLon, pLat], [cLon, cLat]);
       totalDistanceKm += stepDistKm;
 
-      const deltaElev = curr.elevation - prev.elevation;
+      const deltaElev = elev - prevElev;
       if (deltaElev > 0) totalElevationGain += deltaElev;
       else totalElevationLoss += Math.abs(deltaElev);
 
-      stepSlopeDeg = calculateSlopeDeg(prev.elevation, curr.elevation, stepDistKm * 1000);
+      stepSlopeDeg = calculateSlopeDeg(prevElev, elev, stepDistKm * 1000);
       maxSlopeDeg = Math.max(maxSlopeDeg, stepSlopeDeg);
       sumSlope += stepSlopeDeg;
 
@@ -325,26 +375,33 @@ export function planAresRoute(startCoord, destCoord, waypoints = [], profile = R
       totalTravelHours += stepDistKm / speedKmH;
     }
 
-    if (curr.hazard > 0.3) {
+    if (hazard > 0.3) {
       hazardExposureCount++;
     }
 
     elevationProfile.push({
       distanceKm: Number(totalDistanceKm.toFixed(2)),
-      elevationM: curr.elevation,
+      elevationM: elev,
       slopeDeg: Number(stepSlopeDeg.toFixed(1)),
-      hazard: curr.hazard,
-      lon: curr.lon,
-      lat: curr.lat
+      hazard,
+      lon: cLon,
+      lat: cLat
     });
   }
 
-  const avgSlopeDeg = rawNodes.length > 1 ? sumSlope / (rawNodes.length - 1) : 0;
-  const hazardExposurePercent = rawNodes.length > 0
-    ? Math.round((hazardExposureCount / rawNodes.length) * 100)
+  const avgSlopeDeg = coordinates.length > 1 ? sumSlope / (coordinates.length - 1) : 0;
+  const hazardExposurePercent = coordinates.length > 0
+    ? Math.round((hazardExposureCount / coordinates.length) * 100)
     : 0;
 
   const totalMetabolicKcal = calculateMetabolicRateKcal(avgSlopeDeg, totalTravelHours);
+
+  // NASA PLSS Life Support Consumables Budget (4.86 kcal / L O2 in 0.38g)
+  const o2Liters = Math.round(totalMetabolicKcal / 4.86);
+  const o2Kg = Number((o2Liters * 0.001429).toFixed(2));
+  const batteryWh = Math.round(totalTravelHours * 320); // 320W suit power
+  const coolingWaterKg = Number((totalTravelHours * 0.38).toFixed(2)); // sublimator rate
+  const pointOfSafeReturnKm = Number((totalDistanceKm * 0.45).toFixed(1));
 
   return {
     profileId: profile.id,
@@ -361,9 +418,19 @@ export function planAresRoute(startCoord, destCoord, waypoints = [], profile = R
       elevationLossM: Math.round(totalElevationLoss),
       minElevationM: Math.min(...elevationProfile.map((p) => p.elevationM)),
       maxElevationM: Math.max(...elevationProfile.map((p) => p.elevationM)),
+      baseElevationM: elevationProfile[0]?.elevationM ?? 0,
+      relativeMaxReliefM: Math.round(Math.max(...elevationProfile.map((p) => p.elevationM - (elevationProfile[0]?.elevationM || 0)))),
       hazardExposurePercent,
       estimatedCaloriesKcal: totalMetabolicKcal,
-      nodeCount: rawNodes.length
+      nodeCount: coordinates.length,
+      plssConsumables: {
+        oxygenLiters: o2Liters,
+        oxygenKg: o2Kg,
+        batteryWh,
+        coolingWaterKg,
+        pointOfSafeReturnKm,
+        suitMobilityMargin: maxSlopeDeg <= 10 ? 'Nominal (100% Suit Mobility)' : maxSlopeDeg <= 15 ? 'Manageable (Paced Ascent)' : 'Caution (Steep Scree)'
+      }
     }
   };
 }

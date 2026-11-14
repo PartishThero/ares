@@ -619,9 +619,15 @@ export default function MarsMap({
           <span>{formatMarsCoords(cursorCoords[0], cursorCoords[1])}</span>
         </div>
         <span className="text-ares-border">|</span>
-        <div className="flex items-center space-x-1 text-emerald-400">
+        <div 
+          className="flex items-center space-x-1 text-emerald-400 cursor-help"
+          title={`Mars Orbiter Laser Altimeter: ${cursorElev < 0 ? `${(Math.abs(cursorElev)/1000).toFixed(1)} km below datum (Mars has no sea level; 0m is the mean areoid)` : `+${(cursorElev/1000).toFixed(1)} km above datum`}`}
+        >
           <Mountain className="w-3.5 h-3.5" />
-          <span>MOLA: {cursorElev.toLocaleString()} m</span>
+          <span>{cursorElev.toLocaleString()} m MOLA</span>
+          <span className="text-[10px] text-ares-text-muted hidden md:inline">
+            ({cursorElev < 0 ? `${(Math.abs(cursorElev) / 1000).toFixed(1)}km below datum` : `+${(cursorElev / 1000).toFixed(1)}km`})
+          </span>
         </div>
         <span className="text-ares-border hidden sm:inline">|</span>
         <span className="text-[10px] text-ares-text-muted hidden sm:inline">

@@ -89,15 +89,20 @@ export default function DestinationInspector({
 
       <div className="grid grid-cols-2 gap-2">
         <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-          <div className="flex items-center space-x-1.5 text-ares-text-muted text-[10px] font-mono uppercase">
-            <Mountain className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Elevation (MOLA)</span>
+          <div className="flex items-center justify-between text-ares-text-muted text-[10px] font-mono uppercase">
+            <div className="flex items-center space-x-1.5">
+              <Mountain className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Elevation</span>
+            </div>
+            <span className="text-[9px] text-ares-cyan font-semibold">MOLA DATUM</span>
           </div>
           <div className="text-sm font-mono font-bold text-ares-text mt-1">
             {elevationMeters.toLocaleString()} m
           </div>
-          <div className="text-[10px] text-ares-text-muted/80 mt-0.5">
-            {elevationMeters < -4000 ? 'Crater floor' : 'Mount Sharp flank'}
+          <div className="text-[10px] text-ares-text-muted mt-0.5 leading-snug">
+            {elevationMeters < 0 
+              ? `${(Math.abs(elevationMeters) / 1000).toFixed(1)} km below planetary areoid` 
+              : `+${(elevationMeters / 1000).toFixed(1)} km above planetary areoid`}
           </div>
         </div>
 
