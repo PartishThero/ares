@@ -49,6 +49,7 @@ export default function MarsMap({
   panToCoord,
   userPOIs = [],
   interactionMode = 'default',
+  activeTab = 'inspector',
   onPlanUnchartedTraverse
 }) {
   const mapElement = useRef(null);
@@ -525,9 +526,22 @@ export default function MarsMap({
 
   return (
     <div className={`relative w-full h-full bg-[#17191c] overflow-hidden select-none ${
-      interactionMode === 'explore_uncharted' ? 'cursor-crosshair' : 'cursor-default'
+      interactionMode === 'explore_uncharted'
+        ? 'cursor-crosshair'
+        : activeTab === 'inspector'
+        ? 'inspector-aim-mode'
+        : 'cursor-default'
     }`}>
       <div ref={mapElement} className="w-full h-full" />
+
+      {/* Tactical Inspector Reticle Active Prompt */}
+      {activeTab === 'inspector' && interactionMode !== 'explore_uncharted' && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-10 px-3.5 py-1.5 rounded-xl bg-ares-surface/85 backdrop-blur-md border border-ares-accent/40 text-xs font-mono shadow-panel flex items-center space-x-2 pointer-events-none">
+          <Crosshair className="w-3.5 h-3.5 text-ares-accent animate-pulse" />
+          <span className="text-ares-accent font-bold uppercase tracking-wider text-[11px]">Tactical Inspector:</span>
+          <span className="text-ares-text-muted text-[11px]">Click any point on terrain to inspect localized regional telemetry</span>
+        </div>
+      )}
 
       {interactionMode === 'explore_uncharted' && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-xl bg-ares-accent/90 backdrop-blur-md text-ares-bg font-mono text-xs font-bold shadow-panel flex items-center space-x-2 animate-bounce">

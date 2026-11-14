@@ -142,3 +142,26 @@ canvas:focus-visible {
   border: none !important;
   box-shadow: none !important;
 }
+
+/* Tactical Inspector Aim Reticle Cursor */
+.inspector-aim-mode,
+.inspector-aim-mode .ol-viewport,
+.inspector-aim-mode canvas {
+  cursor: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='8' stroke='%23FF5500' stroke-width='1.5' stroke-dasharray='3 2'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%2300F0FF'/%3E%3Cline x1='12' y1='0' x2='12' y2='5' stroke='%23FF5500' stroke-width='1.5'/%3E%3Cline x1='12' y1='19' x2='12' y2='24' stroke='%23FF5500' stroke-width='1.5'/%3E%3Cline x1='0' y1='12' x2='5' y2='12' stroke='%23FF5500' stroke-width='1.5'/%3E%3Cline x1='19' y1='12' x2='24' y2='12' stroke='%23FF5500' stroke-width='1.5'/%3E%3C/svg%3E") 12 12, crosshair !important;
+}
+
+/* ArcGIS 3D Measurement & Elevation Profile Widget Positioning & Theming */
+.esri-ui-bottom-right {
+  bottom: 18px !important;
+  right: 24px !important;
+}
+
+.esri-elevation-profile,
+.esri-direct-line-measurement-3d,
+.esri-area-measurement-3d {
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(56, 60, 65, 0.7) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(12px) !important;
+}

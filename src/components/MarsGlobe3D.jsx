@@ -590,30 +590,57 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
         </button>
       </div>
 
-      {/* Floating Basemap Switcher (Bottom Right) */}
-      <div className="absolute bottom-6 right-6 z-20 pointer-events-auto flex items-center bg-ares-surface/90 backdrop-blur-md border border-ares-border rounded-xl p-1 shadow-panel">
-        <button
-          onClick={() => handleToggleBasemap('imagery')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all flex items-center space-x-1.5 ${
-            activeBasemap === 'imagery'
-              ? 'bg-ares-accent text-ares-bg font-bold shadow-glow-accent'
-              : 'text-ares-text-muted hover:text-white'
-          }`}
-        >
-          <Layers className="w-3.5 h-3.5" />
-          <span>Optical Satellite</span>
-        </button>
-        <button
-          onClick={() => handleToggleBasemap('shadedRelief')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all flex items-center space-x-1.5 ${
-            activeBasemap === 'shadedRelief'
-              ? 'bg-ares-accent text-ares-bg font-bold shadow-glow-accent'
-              : 'text-ares-text-muted hover:text-white'
-          }`}
-        >
-          <Mountain className="w-3.5 h-3.5" />
-          <span>Shaded Relief MOLA</span>
-        </button>
+      {/* Floating Basemap Switcher & Active Measurement Tool Dock (Bottom Right) */}
+      <div
+        className={`absolute right-6 z-20 pointer-events-auto flex items-center space-x-2 transition-all duration-300 ease-out ${
+          activeMeasureTool === 'elevation'
+            ? 'bottom-[345px]'
+            : activeMeasureTool
+              ? 'bottom-[245px]'
+              : 'bottom-6'
+        }`}
+      >
+        {/* Quick-Dismiss Badge for Active 3D Measurement Widget */}
+        {activeMeasureTool && (
+          <div className="flex items-center space-x-2 bg-ares-surface/95 backdrop-blur-md border border-ares-cyan/60 px-3 py-1.5 rounded-xl shadow-panel text-xs font-mono text-ares-cyan">
+            <span className="font-bold uppercase tracking-wider text-[11px]">
+              {activeMeasureTool === 'elevation' ? 'Elevation Profile' : activeMeasureTool === 'line' ? '3D Distance' : '3D Area'}
+            </span>
+            <button
+              onClick={handleClearMeasurement}
+              className="p-1 rounded-md hover:bg-ares-warning/20 text-ares-text-muted hover:text-ares-warning transition-all"
+              title="Close & Clear Measurement Widget"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Basemap Switcher */}
+        <div className="flex items-center bg-ares-surface/90 backdrop-blur-md border border-ares-border rounded-xl p-1 shadow-panel">
+          <button
+            onClick={() => handleToggleBasemap('imagery')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all flex items-center space-x-1.5 ${
+              activeBasemap === 'imagery'
+                ? 'bg-ares-accent text-ares-bg font-bold shadow-glow-accent'
+                : 'text-ares-text-muted hover:text-white'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Optical Satellite</span>
+          </button>
+          <button
+            onClick={() => handleToggleBasemap('shadedRelief')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all flex items-center space-x-1.5 ${
+              activeBasemap === 'shadedRelief'
+                ? 'bg-ares-accent text-ares-bg font-bold shadow-glow-accent'
+                : 'text-ares-text-muted hover:text-white'
+            }`}
+          >
+            <Mountain className="w-3.5 h-3.5" />
+            <span>Shaded Relief MOLA</span>
+          </button>
+        </div>
       </div>
 
       {/* ================= DRAWERS ================= */}

@@ -55,7 +55,8 @@ export default function App() {
 
   const [activeMission, setActiveMission] = useState(PRESET_MISSIONS[0]);
 
-  const [activeTab, setActiveTab] = useState('planner');
+  const [activeTab, setActiveTab] = useState('inspector');
+  const [routePrompt, setRoutePrompt] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRadiationOpen, setIsRadiationOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -141,17 +142,36 @@ export default function App() {
 
   const handleSetAsStart = (coord) => {
     setStartCoord(coord);
-    setActiveTab('planner');
-    if (destCoord) {
+    if (!destCoord) {
+      setRoutePrompt({
+        type: 'start_set',
+        message: '✓ Start location (EVA Base) set. Now click on the map to choose your destination target.'
+      });
+    } else {
+      setRoutePrompt({
+        type: 'start_updated',
+        message: '✓ Start location updated. Both waypoints configured!'
+      });
       calculateTraverseRoutes(coord, destCoord, selectedProfileId);
     }
   };
 
   const handleSetAsDest = (coord) => {
     setDestCoord(coord);
-    setActiveTab('planner');
-    if (startCoord) {
+    if (!startCoord) {
+      setRoutePrompt({
+        type: 'dest_set',
+        message: '✓ Destination target set. Now click on the map to choose your start location (EVA Base).'
+      });
+    } else {
+      setRoutePrompt({
+        type: 'both_set',
+        message: '✓ Destination target locked! Both waypoints set. Calculating route...'
+      });
       calculateTraverseRoutes(startCoord, coord, selectedProfileId);
+      setTimeout(() => {
+        setActiveTab('planner');
+      }, 450);
     }
   };
 
@@ -334,6 +354,7 @@ export default function App() {
               panToCoord={panToCoord}
               userPOIs={userPOIs}
               interactionMode={interactionMode}
+              activeTab={activeTab}
               onPlanUnchartedTraverse={handlePlanUnchartedTraverse}
             />
 
@@ -364,6 +385,8 @@ export default function App() {
               onSelectPOI={handleSelectPOI}
               startCoord={startCoord}
               destCoord={destCoord}
+              routePrompt={routePrompt}
+              onClearRoutePrompt={() => setRoutePrompt(null)}
               onSelectStart={handleSetAsStart}
               onSelectDest={handleSetAsDest}
               selectedProfileId={selectedProfileId}
@@ -425,6 +448,7 @@ export default function App() {
         isOpen={isAddPOIOpen}
         onClose={() => setIsAddPOIOpen(false)}
         initialCoords={addPOICoords}
+        inspectionData={inspectionData}
         onSavePOI={handleSaveAstronautPOI}
       />
     </div>

@@ -29,6 +29,8 @@ export default function Sidebar({
   onSelectPOI,
   startCoord,
   destCoord,
+  routePrompt,
+  onClearRoutePrompt,
   onSelectStart,
   onSelectDest,
   selectedProfileId,
@@ -108,6 +110,11 @@ export default function Sidebar({
                 onOpenAddPOI={onOpenAddPOI}
                 onDeleteUserPOI={onDeleteUserPOI}
                 onPlanUnchartedTraverse={onPlanUnchartedTraverse}
+                startCoord={startCoord}
+                destCoord={destCoord}
+                routePrompt={routePrompt}
+                onClearRoutePrompt={onClearRoutePrompt}
+                onSwitchToPlanner={() => onSelectTab('planner')}
               />
             )}
 

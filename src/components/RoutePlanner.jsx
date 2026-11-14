@@ -1,21 +1,25 @@
 import React from 'react';
 import { 
-  Play, 
   ShieldCheck, 
   Zap, 
   Sparkles, 
   Compass, 
   MapPin, 
   AlertTriangle, 
-  Flame, 
   Clock, 
-  ArrowRight,
   RotateCcw,
-  Activity
+  Activity,
+  Mountain,
+  Navigation,
+  CheckCircle,
+  BatteryCharging,
+  Droplets,
+  Wind,
+  Info
 } from 'lucide-react';
 import { SCIENTIFIC_TARGETS } from '../data/scientificTargets';
 import { ROUTE_PROFILES } from '../algorithms/terrainCost';
-import { formatDecimalCoords } from '../utils/coordinates';
+import { formatMarsCoords } from '../utils/coordinates';
 
 export default function RoutePlanner({
   startCoord,
@@ -24,7 +28,6 @@ export default function RoutePlanner({
   onSelectDest,
   selectedProfileId,
   onSelectProfile,
-  onCalculateRoute,
   isCalculating,
   plannedRoute,
   routeScore,
@@ -33,7 +36,6 @@ export default function RoutePlanner({
 }) {
   const allTargets = [...SCIENTIFIC_TARGETS, ...userPOIs];
 
-  // Curate dropdown list to user waypoints, landing sites, and Tier 1/2 landmarks
   const dropdownTargets = allTargets.filter(
     (t) => t.isUserCreated || t.tier <= 2 || t.category === 'Landing Site' || t.category?.includes('Formation')
   );
@@ -57,125 +59,146 @@ export default function RoutePlanner({
       id: 'safest',
       name: 'Safest Traverse',
       icon: <ShieldCheck className="w-4 h-4 text-ares-success" />,
-      desc: 'Skirts steep scarps & sand hazards',
+      desc: 'Avoids steep slopes, crater scarps, and rough sand traps',
       badge: 'Recommended'
     },
     {
       id: 'shortest',
       name: 'Shortest Distance',
       icon: <Zap className="w-4 h-4 text-ares-warning" />,
-      desc: 'Minimizes distance directly',
+      desc: 'Takes the most direct path between waypoints to save time',
       badge: 'Fastest'
     },
     {
       id: 'science',
       name: 'Science-Focused',
       icon: <Sparkles className="w-4 h-4 text-ares-cyan" />,
-      desc: 'Traverses through key geological targets',
-      badge: 'Max Return'
+      desc: 'Directs the path through geological outcrops and sampling sites',
+      badge: 'Max Science'
     }
   ];
 
   return (
-    <div className="h-full overflow-y-auto p-4 space-y-4 select-none">
-      <div className="space-y-3">
+    <div className="h-full overflow-y-auto p-4 space-y-4 select-none font-sans">
+      {/* 1. Navigation Waypoints Section */}
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-mono uppercase tracking-wider text-ares-text-muted font-bold">
-            1. Navigation Waypoints
-          </label>
+          <div className="text-xs font-mono uppercase tracking-wider text-ares-text-muted font-bold flex items-center space-x-1.5">
+            <Navigation className="w-3.5 h-3.5 text-ares-accent" />
+            <span>1. Mission Waypoints</span>
+          </div>
           {plannedRoute && (
             <button
               onClick={onResetRoute}
-              className="text-[11px] font-mono text-ares-text-muted hover:text-ares-danger flex items-center gap-1 transition-colors"
+              className="text-xs font-mono text-ares-text-muted hover:text-ares-danger flex items-center gap-1 transition-colors"
+              title="Reset current route plan"
             >
-              <RotateCcw className="w-3 h-3" />
+              <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset</span>
             </button>
           )}
         </div>
 
-        <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border space-y-1.5">
+        {/* Start Point Card */}
+        <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-mono text-ares-success flex items-center gap-1.5 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-ares-success animate-pulse" />
-              START (EVA BASE)
+            <span className="text-emerald-400 font-bold flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Start Point (EVA Base)
             </span>
-            <span className="text-[10px] font-mono text-ares-text-muted">
-              {startCoord ? formatDecimalCoords(startCoord[0], startCoord[1]) : 'Select point'}
+            <span className="text-[11px] font-mono text-ares-text-muted">
+              {startCoord ? formatMarsCoords(startCoord[0], startCoord[1]) : 'Select on map'}
             </span>
           </div>
-          <select
-            value={matchedStartTarget ? matchedStartTarget.id : startCoord ? 'custom_start' : ''}
-            onChange={(e) => {
-              if (e.target.value === 'custom_start') return;
-              const target = allTargets.find((t) => t.id === e.target.value);
-              if (target) onSelectStart(target.coordinates);
-            }}
-            className="w-full bg-ares-bg border border-ares-border rounded-md px-2.5 py-1.5 text-xs text-ares-text font-mono focus:outline-none focus:border-ares-accent truncate"
-          >
-            <option value="">-- Choose Base Location or Click Map --</option>
-            {startCoord && !matchedStartTarget && (
-              <option value="custom_start">
-                Map Click: {formatDecimalCoords(startCoord[0], startCoord[1])}
-              </option>
-            )}
-            {dropdownTargets.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name} {t.isUserCreated ? '(Custom)' : `(${t.priority?.split(' ')[0] || t.category || 'Target'})`}
-              </option>
-            ))}
-          </select>
+
+          <div className="relative">
+            <select
+              value={matchedStartTarget ? matchedStartTarget.id : startCoord ? 'custom_start' : ''}
+              onChange={(e) => {
+                if (e.target.value === 'custom_start') return;
+                const target = allTargets.find((t) => t.id === e.target.value);
+                if (target) onSelectStart(target.coordinates);
+              }}
+              className="w-full bg-ares-bg border border-ares-border hover:border-ares-accent/50 rounded-xl px-3 py-2 text-xs text-ares-text focus:outline-none focus:border-ares-accent transition-colors truncate"
+            >
+              <option value="">-- Choose Base Location or Click Map --</option>
+              {startCoord && !matchedStartTarget && (
+                <option value="custom_start">
+                  Selected Map Location ({formatMarsCoords(startCoord[0], startCoord[1])})
+                </option>
+              )}
+              {dropdownTargets.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} {t.isUserCreated ? '(Custom Waypoint)' : `(${t.priority?.split(' ')[0] || t.category || 'Target'})`}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border space-y-1.5">
+        {/* Destination Target Card */}
+        <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-mono text-ares-accent flex items-center gap-1.5 font-semibold">
+            <span className="text-ares-accent font-bold flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide">
               <span className="w-2 h-2 rounded-full bg-ares-accent animate-pulse" />
-              TARGET (DESTINATION)
+              Destination Target
             </span>
-            <span className="text-[10px] font-mono text-ares-text-muted">
-              {destCoord ? formatDecimalCoords(destCoord[0], destCoord[1]) : 'Select point'}
+            <span className="text-[11px] font-mono text-ares-text-muted">
+              {destCoord ? formatMarsCoords(destCoord[0], destCoord[1]) : 'Select on map'}
             </span>
           </div>
-          <select
-            value={matchedDestTarget ? matchedDestTarget.id : destCoord ? 'custom_dest' : ''}
-            onChange={(e) => {
-              if (e.target.value === 'custom_dest') return;
-              const target = allTargets.find((t) => t.id === e.target.value);
-              if (target) onSelectDest(target.coordinates);
-            }}
-            className="w-full bg-ares-bg border border-ares-border rounded-md px-2.5 py-1.5 text-xs text-ares-text font-mono focus:outline-none focus:border-ares-accent truncate"
-          >
-            <option value="">-- Choose Scientific Target or Click Map --</option>
-            {destCoord && !matchedDestTarget && (
-              <option value="custom_dest">
-                Map Click: {formatDecimalCoords(destCoord[0], destCoord[1])}
-              </option>
-            )}
-            {dropdownTargets.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name} ({t.category || 'Target'})
-              </option>
-            ))}
-          </select>
+
+          <div className="relative">
+            <select
+              value={matchedDestTarget ? matchedDestTarget.id : destCoord ? 'custom_dest' : ''}
+              onChange={(e) => {
+                if (e.target.value === 'custom_dest') return;
+                const target = allTargets.find((t) => t.id === e.target.value);
+                if (target) onSelectDest(target.coordinates);
+              }}
+              className="w-full bg-ares-bg border border-ares-border hover:border-ares-accent/50 rounded-xl px-3 py-2 text-xs text-ares-text focus:outline-none focus:border-ares-accent transition-colors truncate"
+            >
+              <option value="">-- Choose Scientific Target or Click Map --</option>
+              {destCoord && !matchedDestTarget && (
+                <option value="custom_dest">
+                  Selected Map Location ({formatMarsCoords(destCoord[0], destCoord[1])})
+                </option>
+              )}
+              {dropdownTargets.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({t.category || 'Target'})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
+      {/* 2. Route Optimization Profile Selection */}
       <div className="space-y-2">
-        <label className="text-xs font-mono uppercase tracking-wider text-ares-text-muted font-bold">
-          2. Optimization Profile
-        </label>
-        <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-mono uppercase tracking-wider text-ares-text-muted font-bold">
+            2. Optimization Strategy
+          </div>
+          {isCalculating && (
+            <div className="text-[11px] font-mono text-ares-accent flex items-center gap-1.5 animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-ares-accent" />
+              <span>Optimizing path...</span>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
           {profiles.map((p) => {
             const isSelected = selectedProfileId === p.id;
             return (
               <div
                 key={p.id}
                 onClick={() => onSelectProfile(p.id)}
-                className={`p-2.5 rounded-lg cursor-pointer border transition-all ${
+                className={`p-3 rounded-xl cursor-pointer border transition-all ${
                   isSelected
-                    ? 'bg-ares-surface-alt border-ares-accent shadow-sm'
-                    : 'bg-ares-surface-alt/40 border-ares-border hover:bg-ares-surface-alt/80'
+                    ? 'bg-ares-surface-alt border-ares-accent shadow-glow-sm'
+                    : 'bg-ares-surface-alt/40 border-ares-border hover:bg-ares-surface-alt/80 hover:border-ares-border/80'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -183,11 +206,13 @@ export default function RoutePlanner({
                     {p.icon}
                     <span className="text-xs font-bold text-ares-text">{p.name}</span>
                   </div>
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ares-bg text-ares-text-muted border border-ares-border">
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                    isSelected ? 'bg-ares-accent/20 border-ares-accent/50 text-ares-accent font-bold' : 'bg-ares-bg border-ares-border text-ares-text-muted'
+                  }`}>
                     {p.badge}
                   </span>
                 </div>
-                <p className="text-[11px] text-ares-text-muted mt-1 leading-snug">
+                <p className="text-xs text-ares-text-muted mt-1 leading-snug">
                   {p.desc}
                 </p>
               </div>
@@ -196,118 +221,133 @@ export default function RoutePlanner({
         </div>
       </div>
 
-      <button
-        onClick={onCalculateRoute}
-        disabled={!startCoord || !destCoord || isCalculating}
-        className={`w-full py-3 px-4 rounded-xl font-mono text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center space-x-2 shadow-panel ${
-          !startCoord || !destCoord
-            ? 'bg-ares-surface-alt border border-ares-border text-ares-text-muted/60 cursor-not-allowed'
-            : isCalculating
-            ? 'bg-ares-accent/80 text-ares-bg cursor-wait animate-pulse'
-            : 'bg-gradient-to-r from-ares-accent to-ares-accent-soft hover:opacity-95 text-ares-bg shadow-glow-accent cursor-pointer'
-        }`}
-      >
-        <Play className="w-4 h-4 fill-current" />
-        <span>{isCalculating ? 'Computing A* Path...' : 'Calculate Optimized Route'}</span>
-      </button>
-
+      {/* 3. Route Evaluation & Metrics (Shown when a route is computed) */}
       {plannedRoute && (
         <div className="space-y-3 pt-3 border-t border-ares-border">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono uppercase tracking-wider text-ares-text-muted font-bold">
-              Route Evaluation
+              Traverse Evaluation
             </span>
             {routeScore && (
-              <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${routeScore.badgeClass}`}>
+              <span className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border ${routeScore.badgeClass}`}>
                 Score: {routeScore.score}/100 ({routeScore.grade.split(' ')[0]})
               </span>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-            <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-              <span className="text-[10px] text-ares-text-muted block">TRAVERSE DISTANCE</span>
-              <span className="text-sm font-bold text-ares-text">{plannedRoute.metrics.totalDistanceKm} km</span>
-            </div>
-
-            <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-              <span className="text-[10px] text-ares-text-muted block">EST. EVA DURATION</span>
-              <span className="text-sm font-bold text-ares-cyan">{plannedRoute.metrics.estimatedDurationHours} hrs</span>
-            </div>
-
-            <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-              <span className="text-[10px] text-ares-text-muted block">MAX SLOPE GRADE</span>
-              <span className={`text-sm font-bold ${plannedRoute.metrics.maxSlopeDeg > 15 ? 'text-ares-danger' : 'text-emerald-400'}`}>
-                {plannedRoute.metrics.maxSlopeDeg}°
+          {/* Primary Route Metrics Grid */}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border">
+              <span className="text-[11px] text-ares-text-muted block font-sans">Total Distance</span>
+              <span className="text-base font-bold text-ares-text mt-0.5 block font-mono">
+                {plannedRoute.metrics.totalDistanceKm} km
               </span>
             </div>
 
-            <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-              <span className="text-[10px] text-ares-text-muted block">HAZARD EXPOSURE</span>
-              <span className={`text-sm font-bold ${plannedRoute.metrics.hazardExposurePercent > 20 ? 'text-ares-danger' : 'text-ares-success'}`}>
-                {plannedRoute.metrics.hazardExposurePercent}%
+            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border">
+              <span className="text-[11px] text-ares-text-muted block font-sans">Estimated Time</span>
+              <span className="text-base font-bold text-ares-cyan mt-0.5 block font-mono">
+                {plannedRoute.metrics.estimatedDurationHours} hours
               </span>
             </div>
 
-            <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-              <span className="text-[10px] text-ares-text-muted block">NET CLIMB (ASCENT)</span>
-              <span className="text-sm font-bold text-ares-text">+{plannedRoute.metrics.elevationGainM} m</span>
+            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border">
+              <span className="text-[11px] text-ares-text-muted block font-sans">Steepest Slope</span>
+              <span className={`text-base font-bold mt-0.5 block font-mono ${
+                plannedRoute.metrics.maxSlopeDeg > 15 ? 'text-ares-danger' : 'text-emerald-400'
+              }`}>
+                {plannedRoute.metrics.maxSlopeDeg}° Grade
+              </span>
             </div>
 
-            <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-              <span className="text-[10px] text-ares-text-muted block">START BASE DATUM</span>
-              <span className="text-sm font-bold text-ares-cyan">{plannedRoute.metrics.baseElevationM} m MOLA</span>
+            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border">
+              <span className="text-[11px] text-ares-text-muted block font-sans">Hazard Exposure</span>
+              <span className={`text-base font-bold mt-0.5 block font-mono ${
+                plannedRoute.metrics.hazardExposurePercent > 20 ? 'text-ares-danger' : 'text-ares-success'
+              }`}>
+                {plannedRoute.metrics.hazardExposurePercent}% Area
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border">
+              <span className="text-[11px] text-ares-text-muted block font-sans">Elevation Change</span>
+              <span className="text-base font-bold text-ares-text mt-0.5 block font-mono">
+                +{plannedRoute.metrics.elevationGainM} m climb
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border">
+              <span className="text-[11px] text-ares-text-muted block font-sans">Starting Elevation</span>
+              <span className="text-base font-bold text-ares-cyan mt-0.5 block font-mono">
+                {plannedRoute.metrics.baseElevationM} m MOLA
+              </span>
             </div>
           </div>
 
+          {/* Mission Safety Assessment */}
           {routeScore && (
-            <div className="p-2.5 rounded-lg bg-ares-bg/80 border border-ares-border space-y-1">
-              <div className="text-[10px] font-mono text-ares-text-muted font-semibold">
-                PLANNING ASSESSMENT
+            <div className="p-3 rounded-xl bg-ares-surface-alt/50 border border-ares-border space-y-1.5">
+              <div className="text-[11px] font-mono text-ares-accent font-semibold uppercase tracking-wider flex items-center space-x-1.5">
+                <Info className="w-3.5 h-3.5" />
+                <span>Mission Assessment</span>
               </div>
-              <p className="text-xs text-ares-text leading-snug">
+              <p className="text-xs text-ares-text leading-relaxed font-sans">
                 {routeScore.recommendation}
               </p>
-              <div className="text-[9px] font-mono text-ares-text-muted pt-1 border-t border-ares-border/50 truncate">
-                {routeScore.formulaText}
-              </div>
             </div>
           )}
 
+          {/* Astronaut Life Support (PLSS) Consumables */}
           {plannedRoute.metrics.plssConsumables && (
-            <div className="p-2.5 rounded-lg bg-ares-surface-alt/70 border border-ares-border space-y-2">
-              <div className="flex items-center justify-between text-[10px] font-mono font-bold text-ares-text uppercase">
+            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border space-y-2.5">
+              <div className="flex items-center justify-between text-xs font-bold text-ares-text">
                 <div className="flex items-center space-x-1.5 text-ares-cyan">
-                  <Activity className="w-3.5 h-3.5" />
-                  <span>NASA PLSS Flight Consumables</span>
+                  <Activity className="w-4 h-4" />
+                  <span>Astronaut Life Support Consumables (PLSS)</span>
                 </div>
-                <span className="text-ares-success">
+                <span className="text-[11px] font-mono text-ares-success">
                   {plannedRoute.metrics.plssConsumables.suitMobilityMargin}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                <div className="p-1.5 rounded bg-ares-bg border border-ares-border">
-                  <span className="text-[9px] text-ares-text-muted block">OXYGEN DRAW</span>
-                  <span className="font-bold text-ares-text">
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2 rounded-lg bg-ares-bg/80 border border-ares-border">
+                  <span className="text-[10px] text-ares-text-muted flex items-center gap-1 font-sans">
+                    <Wind className="w-3 h-3 text-ares-cyan" />
+                    Oxygen Required
+                  </span>
+                  <span className="font-bold text-ares-text mt-0.5 block font-mono">
                     {plannedRoute.metrics.plssConsumables.oxygenLiters} L ({plannedRoute.metrics.plssConsumables.oxygenKg} kg)
                   </span>
                 </div>
-                <div className="p-1.5 rounded bg-ares-bg border border-ares-border">
-                  <span className="text-[9px] text-ares-text-muted block">COOLING SUBLIMATOR</span>
-                  <span className="font-bold text-ares-cyan">
+
+                <div className="p-2 rounded-lg bg-ares-bg/80 border border-ares-border">
+                  <span className="text-[10px] text-ares-text-muted flex items-center gap-1 font-sans">
+                    <Droplets className="w-3 h-3 text-ares-cyan" />
+                    Cooling Water
+                  </span>
+                  <span className="font-bold text-ares-cyan mt-0.5 block font-mono">
                     {plannedRoute.metrics.plssConsumables.coolingWaterKg} kg H₂O
                   </span>
                 </div>
-                <div className="p-1.5 rounded bg-ares-bg border border-ares-border">
-                  <span className="text-[9px] text-ares-text-muted block">SUIT POWER DRAW</span>
-                  <span className="font-bold text-ares-warning">
-                    {plannedRoute.metrics.plssConsumables.batteryWh} Wh
+
+                <div className="p-2 rounded-lg bg-ares-bg/80 border border-ares-border">
+                  <span className="text-[10px] text-ares-text-muted flex items-center gap-1 font-sans">
+                    <BatteryCharging className="w-3 h-3 text-ares-warning" />
+                    Battery Power
+                  </span>
+                  <span className="font-bold text-ares-warning mt-0.5 block font-mono">
+                    {plannedRoute.metrics.plssConsumables.batteryWh?.toLocaleString()} Wh
                   </span>
                 </div>
-                <div className="p-1.5 rounded bg-ares-bg border border-ares-border">
-                  <span className="text-[9px] text-ares-text-muted block">SAFE RETURN PNR</span>
-                  <span className="font-bold text-emerald-400">
-                    {plannedRoute.metrics.plssConsumables.pointOfSafeReturnKm} km marker
+
+                <div className="p-2 rounded-lg bg-ares-bg/80 border border-ares-border">
+                  <span className="text-[10px] text-ares-text-muted flex items-center gap-1 font-sans">
+                    <CheckCircle className="w-3 h-3 text-emerald-400" />
+                    Point of Safe Return
+                  </span>
+                  <span className="font-bold text-emerald-400 mt-0.5 block font-mono">
+                    {plannedRoute.metrics.plssConsumables.pointOfSafeReturnKm} km from base
                   </span>
                 </div>
               </div>
@@ -318,4 +358,3 @@ export default function RoutePlanner({
     </div>
   );
 }
-
