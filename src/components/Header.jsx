@@ -14,7 +14,9 @@ import {
   ChevronDown,
   X,
   ExternalLink,
-  Home
+  Home,
+  Globe,
+  Map as MapIcon
 } from 'lucide-react';
 import { SCIENTIFIC_TARGETS } from '../data/scientificTargets.js';
 
@@ -31,7 +33,9 @@ export default function Header({
   interactionMode = 'default',
   onOpenDirections,
   onToggleLandingPage,
-  isLandingPage = false
+  isLandingPage = false,
+  viewMode = 'map',
+  onChangeViewMode
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -215,6 +219,36 @@ export default function Header({
             <span>{liveTelemetry?.radiationRateUsvPerHour || 27.1} μSv/h</span>
           </div>
         </div>
+
+        {/* Dual View Mode Switcher: 3D Globe vs 2D Tactical Map */}
+        {onChangeViewMode && (
+          <div className="flex items-center bg-ares-surface/90 backdrop-blur-md border border-ares-border rounded-xl p-0.5 shadow-panel">
+            <button
+              onClick={() => onChangeViewMode('globe')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
+                viewMode === 'globe'
+                  ? 'bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg font-bold shadow-glow-accent'
+                  : 'text-ares-text-muted hover:text-white'
+              }`}
+              title="Switch to 3D Planetary Globe (Esri Explore Mars Engine)"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">3D Globe</span>
+            </button>
+            <button
+              onClick={() => onChangeViewMode('map')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
+                viewMode === 'map'
+                  ? 'bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg font-bold shadow-glow-accent'
+                  : 'text-ares-text-muted hover:text-white'
+              }`}
+              title="Switch to 2D Tactical Surface Map (Google Maps for Mars)"
+            >
+              <MapIcon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">2D Tactical</span>
+            </button>
+          </div>
+        )}
 
         <button
           onClick={onOpenRadiation}

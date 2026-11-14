@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import MarsMap from './components/MarsMap';
+import MarsGlobe3D from './components/MarsGlobe3D';
 import LayerControls from './components/LayerControls';
 import Sidebar from './components/Sidebar';
 import RadiationPanel from './components/RadiationPanel';
@@ -250,6 +251,7 @@ export default function App() {
         marsTime={marsTime}
         liveTelemetry={liveTelemetry}
         onLaunchApp={() => setViewMode('map')}
+        onLaunchGlobe={() => setViewMode('globe')}
         onSelectMissionAndLaunch={(mission) => {
           setViewMode('map');
           handleLoadAndPlanMission(mission);
@@ -274,7 +276,10 @@ export default function App() {
     <div className="flex flex-col h-screen w-screen bg-ares-bg text-ares-text overflow-hidden select-none relative font-sans">
       <Header
         allTargets={allCombinedTargets}
-        onSelectTarget={handleSelectPOI}
+        onSelectTarget={(target) => {
+          handleSelectPOI(target);
+          if (viewMode === 'globe') setViewMode('map');
+        }}
         marsTime={marsTime}
         liveTelemetry={liveTelemetry}
         onOpenReport={() => setIsReportOpen(true)}
@@ -289,88 +294,106 @@ export default function App() {
         }}
         interactionMode={interactionMode}
         onOpenDirections={() => {
+          if (viewMode === 'globe') setViewMode('map');
           setActiveTab('planner');
           if (isSidebarCollapsed) setIsSidebarCollapsed(false);
         }}
         onToggleLandingPage={() => setViewMode('landing')}
         isLandingPage={false}
+        viewMode={viewMode}
+        onChangeViewMode={(mode) => setViewMode(mode)}
       />
 
       <div className="flex-1 relative w-full h-full">
-        <MarsMap
-          activeLayerId={activeLayerId}
-          layerOpacity={layerOpacity}
-          showHazards={showHazards}
-          showPOIs={showPOIs}
-          showGrid={showGrid}
-          selectedCoord={selectedCoord}
-          onSelectCoordinate={handleSelectCoordinate}
-          plannedRoute={plannedRoute}
-          allRoutes={allRoutes}
-          activeRouteProfile={selectedProfileId}
-          startCoord={startCoord}
-          destCoord={destCoord}
-          panToCoord={panToCoord}
-          userPOIs={userPOIs}
-          interactionMode={interactionMode}
-          onPlanUnchartedTraverse={handlePlanUnchartedTraverse}
-        />
-
-        <div className="absolute top-20 right-4 z-20">
-          <LayerControls
-            activeLayerId={activeLayerId}
-            onSelectLayer={setActiveLayerId}
-            layerOpacity={layerOpacity}
-            onChangeOpacity={setLayerOpacity}
-            showHazards={showHazards}
-            onToggleHazards={() => setShowHazards(!showHazards)}
-            showPOIs={showPOIs}
-            onTogglePOIs={() => setShowPOIs(!showPOIs)}
-            showGrid={showGrid}
-            onToggleGrid={() => setShowGrid(!showGrid)}
+        {viewMode === 'globe' ? (
+          <MarsGlobe3D
+            initialCoord={selectedCoord}
+            onSwitchTo2D={(coord) => {
+              if (coord) {
+                setSelectedCoord(coord);
+                setPanToCoord(coord);
+              }
+              setViewMode('map');
+            }}
           />
-        </div>
+        ) : (
+          <>
+            <MarsMap
+              activeLayerId={activeLayerId}
+              layerOpacity={layerOpacity}
+              showHazards={showHazards}
+              showPOIs={showPOIs}
+              showGrid={showGrid}
+              selectedCoord={selectedCoord}
+              onSelectCoordinate={handleSelectCoordinate}
+              plannedRoute={plannedRoute}
+              allRoutes={allRoutes}
+              activeRouteProfile={selectedProfileId}
+              startCoord={startCoord}
+              destCoord={destCoord}
+              panToCoord={panToCoord}
+              userPOIs={userPOIs}
+              interactionMode={interactionMode}
+              onPlanUnchartedTraverse={handlePlanUnchartedTraverse}
+            />
 
-        <Sidebar
-          activeTab={activeTab}
-          onSelectTab={setActiveTab}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          inspectionData={inspectionData}
-          onSetAsStart={handleSetAsStart}
-          onSetAsDest={handleSetAsDest}
-          onCenterMap={handleCenterMap}
-          onSelectPOI={handleSelectPOI}
-          startCoord={startCoord}
-          destCoord={destCoord}
-          onSelectStart={handleSetAsStart}
-          onSelectDest={handleSetAsDest}
-          selectedProfileId={selectedProfileId}
-          onSelectProfile={handleSelectProfile}
-          onCalculateRoute={() => calculateTraverseRoutes(startCoord, destCoord, selectedProfileId)}
-          isCalculating={isCalculating}
-          plannedRoute={plannedRoute}
-          allRoutes={allRoutes}
-          routeScore={routeScore}
-          onResetRoute={() => {
-            setPlannedRoute(null);
-            setAllRoutes({});
-            setRouteScore(null);
-          }}
-          activeMissionId={activeMission?.id}
-          onSelectMission={setActiveMission}
-          onLoadAndPlanMission={handleLoadAndPlanMission}
-          userPOIs={userPOIs}
-          onOpenAddPOI={(coord) => {
-            setAddPOICoords(coord || selectedCoord || [137.3880, -4.7310]);
-            setIsAddPOIOpen(true);
-          }}
-          onDeleteUserPOI={handleDeleteAstronautPOI}
-          customMissions={customMissions}
-          onOpenCreateMission={() => setIsCreateMissionOpen(true)}
-          onDeleteCustomMission={handleDeleteCustomMission}
-          onPlanUnchartedTraverse={handlePlanUnchartedTraverse}
-        />
+            <div className="absolute top-20 right-4 z-20">
+              <LayerControls
+                activeLayerId={activeLayerId}
+                onSelectLayer={setActiveLayerId}
+                layerOpacity={layerOpacity}
+                onChangeOpacity={setLayerOpacity}
+                showHazards={showHazards}
+                onToggleHazards={() => setShowHazards(!showHazards)}
+                showPOIs={showPOIs}
+                onTogglePOIs={() => setShowPOIs(!showPOIs)}
+                showGrid={showGrid}
+                onToggleGrid={() => setShowGrid(!showGrid)}
+              />
+            </div>
+
+            <Sidebar
+              activeTab={activeTab}
+              onSelectTab={setActiveTab}
+              isCollapsed={isSidebarCollapsed}
+              onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              inspectionData={inspectionData}
+              onSetAsStart={handleSetAsStart}
+              onSetAsDest={handleSetAsDest}
+              onCenterMap={handleCenterMap}
+              onSelectPOI={handleSelectPOI}
+              startCoord={startCoord}
+              destCoord={destCoord}
+              onSelectStart={handleSetAsStart}
+              onSelectDest={handleSetAsDest}
+              selectedProfileId={selectedProfileId}
+              onSelectProfile={handleSelectProfile}
+              onCalculateRoute={() => calculateTraverseRoutes(startCoord, destCoord, selectedProfileId)}
+              isCalculating={isCalculating}
+              plannedRoute={plannedRoute}
+              allRoutes={allRoutes}
+              routeScore={routeScore}
+              onResetRoute={() => {
+                setPlannedRoute(null);
+                setAllRoutes({});
+                setRouteScore(null);
+              }}
+              activeMissionId={activeMission?.id}
+              onSelectMission={setActiveMission}
+              onLoadAndPlanMission={handleLoadAndPlanMission}
+              userPOIs={userPOIs}
+              onOpenAddPOI={(coord) => {
+                setAddPOICoords(coord || selectedCoord || [137.3880, -4.7310]);
+                setIsAddPOIOpen(true);
+              }}
+              onDeleteUserPOI={handleDeleteAstronautPOI}
+              customMissions={customMissions}
+              onOpenCreateMission={() => setIsCreateMissionOpen(true)}
+              onDeleteCustomMission={handleDeleteCustomMission}
+              onPlanUnchartedTraverse={handlePlanUnchartedTraverse}
+            />
+          </>
+        )}
       </div>
 
       <RadiationPanel

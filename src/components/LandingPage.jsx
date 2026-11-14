@@ -14,7 +14,8 @@ import {
   Crosshair,
   Plus,
   Navigation,
-  FileText
+  FileText,
+  Globe
 } from 'lucide-react';
 import { PRESET_MISSIONS } from '../data/missionData.js';
 
@@ -22,6 +23,7 @@ export default function LandingPage({
   marsTime,
   liveTelemetry,
   onLaunchApp,
+  onLaunchGlobe,
   onSelectMissionAndLaunch,
   onLaunchUncharted,
   onLaunchRadiation,
@@ -62,11 +64,20 @@ export default function LandingPage({
           </div>
 
           <button
+            onClick={onLaunchGlobe || onLaunchApp}
+            className="px-4 py-2.5 rounded-xl bg-ares-surface-alt hover:bg-ares-border border border-ares-border text-ares-cyan font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-panel flex items-center space-x-2 cursor-pointer"
+            title="Launch 3D Planetary Globe (Esri Explore Mars Replica)"
+          >
+            <Globe className="w-4 h-4 text-ares-cyan" />
+            <span className="hidden sm:inline">3D Globe</span>
+          </button>
+
+          <button
             onClick={onLaunchApp}
             className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-ares-accent to-ares-accent-soft hover:opacity-95 text-ares-bg font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-glow-accent flex items-center space-x-2 cursor-pointer"
           >
             <Compass className="w-4 h-4" />
-            <span>Launch Mission Control</span>
+            <span>Launch 2D Map</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -89,11 +100,19 @@ export default function LandingPage({
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <button
+              onClick={onLaunchGlobe || onLaunchApp}
+              className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-ares-cyan to-blue-500 hover:opacity-95 text-ares-bg font-mono text-sm font-bold uppercase tracking-wider transition-all shadow-glow-cyan flex items-center space-x-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Globe className="w-4 h-4" />
+              <span>Explore 3D Globe</span>
+            </button>
+
+            <button
               onClick={onLaunchApp}
               className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-ares-accent to-ares-accent-soft hover:opacity-95 text-ares-bg font-mono text-sm font-bold uppercase tracking-wider transition-all shadow-glow-accent flex items-center space-x-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
             >
               <Compass className="w-4 h-4" />
-              <span>Enter Interactive Map</span>
+              <span>2D Tactical Map</span>
             </button>
 
             <button
