@@ -114,3 +114,19 @@
     linear-gradient(to bottom, rgba(56, 60, 65, 0.15) 1px, transparent 1px);
   background-size: 24px 24px;
 }
+
+/* ArcGIS 3D Viewport Focus Ring & Border Elimination */
+.esri-view,
+.esri-view:focus,
+.esri-view *:focus,
+.esri-view-surface,
+.esri-view-surface:focus,
+.esri-view-surface canvas:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+canvas:focus {
+  outline: none !important;
+}

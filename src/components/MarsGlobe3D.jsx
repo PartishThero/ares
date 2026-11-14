@@ -9,18 +9,18 @@ import Polygon from '@arcgis/core/geometry/Polygon.js';
 import Mesh from '@arcgis/core/geometry/Mesh.js';
 import Camera from '@arcgis/core/Camera.js';
 import { addFrameTask } from '@arcgis/core/core/scheduling.js';
+import * as reactiveUtils from '@arcgis/core/core/reactiveUtils.js';
 import DirectLineMeasurement3D from '@arcgis/core/widgets/DirectLineMeasurement3D.js';
 import AreaMeasurement3D from '@arcgis/core/widgets/AreaMeasurement3D.js';
 import ElevationProfile from '@arcgis/core/widgets/ElevationProfile.js';
 
 import {
   marsSR,
-  marsElevation,
-  marsImageryBasemap,
-  shadedReliefBasemap,
-  marsNamesLayer,
-  missionLayer,
-  marsHiRiseImagery,
+  createMarsElevationLayer,
+  createMarsImageryBasemap,
+  createShadedReliefBasemap,
+  createMarsNamesLayer,
+  createMissionLayer,
   ROVER_LOCATIONS
 } from '../services/arcgisMarsLayers.js';
 import { EARTH_3D_MODELS, loadGltfModelFromZip } from '../services/gltfModelLoader.js';
@@ -58,6 +58,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
   const regionGraphicsLayerRef = useRef(null);
   const activeWidgetRef = useRef(null);
   const spinTaskRef = useRef(null);
+  const isRotatingRef = useRef(true);
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [activeBasemap, setActiveBasemap] = useState('imagery');
@@ -68,6 +69,11 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [currentCameraInfo, setCurrentCameraInfo] = useState({ lat: -4.6, lon: 137.4, alt: '840 km' });
+
+  const setSpin = (val) => {
+    isRotatingRef.current = val;
+    setIsRotating(val);
+  };
 
   useEffect(() => {
     if (!viewContainerRef.current) return;
@@ -87,7 +93,12 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
     });
     regionGraphicsLayerRef.current = regionLayer;
 
-    // Initialize 3D Mars SceneView with Martian Ellipsoid GCS_Mars_2000
+    // Initialize fresh 3D Mars layers and Basemap for this SceneView instance
+    const marsElevation = createMarsElevationLayer();
+    const marsImageryBasemap = createMarsImageryBasemap();
+    const marsNamesLayer = createMarsNamesLayer();
+    const missionLayer = createMissionLayer();
+
     const map = new Map({
       basemap: marsImageryBasemap,
       ground: {
@@ -148,11 +159,10 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
 
     sceneViewRef.current = view;
 
-    // Idle planetary rotation
-    let rotating = true;
+    // Idle planetary rotation (pauses during user interaction and camera navigation animations)
     const spinTask = addFrameTask({
       update: () => {
-        if (!view.interacting && rotating) {
+        if (!view.interacting && !view.navigating && isRotatingRef.current) {
           const cam = view.camera?.clone();
           if (cam?.position?.longitude != null) {
             cam.position.longitude -= 0.012;
@@ -163,11 +173,10 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
     });
     spinTaskRef.current = spinTask;
 
-    view.when(() => {
-      setIsLoaded(true);
-
-      // Track camera elevation and coordinates for HUD
-      view.watch('camera', (cam) => {
+    // Watch camera altitude and coordinates using ArcGIS 5.x reactiveUtils
+    const cameraHandle = reactiveUtils.watch(
+      () => view.camera,
+      (cam) => {
         if (cam?.position) {
           const altKm = cam.position.z >= 10000
             ? `${Math.round(cam.position.z / 1000).toLocaleString()} km`
@@ -178,16 +187,25 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
             lat: Number(cam.position.latitude?.toFixed(3) || 0),
             alt: altKm
           });
-
-          // Dynamic HiRISE LOD: activates when camera altitude is lower than 12 km
-          if (marsHiRiseImagery) {
-            marsHiRiseImagery.visible = cam.position.z < 12000;
-          }
         }
-      });
+      }
+    );
+
+    view.when(() => {
+      setIsLoaded(true);
+    }).catch((err) => {
+      console.warn('Mars SceneView initial load note:', err);
+      setIsLoaded(true);
     });
 
+    // Safety fallback timeout ensuring loading screen resolves
+    const loadTimeout = setTimeout(() => {
+      setIsLoaded(true);
+    }, 2500);
+
     return () => {
+      clearTimeout(loadTimeout);
+      if (cameraHandle) cameraHandle.remove();
       if (spinTaskRef.current) spinTaskRef.current.remove();
       if (activeWidgetRef.current) {
         try { activeWidgetRef.current.destroy(); } catch (e) {}
@@ -203,10 +221,10 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
     const view = sceneViewRef.current;
     if (!view) return;
     if (type === 'imagery') {
-      view.map.basemap = marsImageryBasemap;
+      view.map.basemap = createMarsImageryBasemap();
       setActiveBasemap('imagery');
     } else {
-      view.map.basemap = shadedReliefBasemap;
+      view.map.basemap = createShadedReliefBasemap();
       setActiveBasemap('shadedRelief');
     }
   };
@@ -215,7 +233,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
   const handleFlyToLocation = (loc) => {
     const view = sceneViewRef.current;
     if (!view) return;
-    setIsRotating(false);
+    setSpin(false);
     view.goTo(new Camera(loc.camera), { duration: 2500, easing: 'in-out-cubic' });
   };
 
@@ -224,7 +242,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
     const view = sceneViewRef.current;
     if (!view) return;
 
-    setIsRotating(false);
+    setSpin(false);
 
     // Clean up previous measurement widget
     if (activeWidgetRef.current) {
@@ -280,7 +298,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
 
     setIsLoadingModel(true);
     setSelectedModel(model);
-    setIsRotating(false);
+    setSpin(false);
 
     try {
       modelLayer.removeAll();
@@ -333,7 +351,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
     if (!view || !regionLayer) return;
 
     setSelectedCountry(country);
-    setIsRotating(false);
+    setSpin(false);
     regionLayer.removeAll();
 
     const centerLon = view.center.longitude;
@@ -411,7 +429,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
   const handleResetPlanetView = () => {
     const view = sceneViewRef.current;
     if (!view) return;
-    setIsRotating(true);
+    setSpin(true);
     view.goTo({
       position: { x: -57.10, y: -24.37, z: 840000, spatialReference: { wkid: 104971 } },
       heading: 293.2,
@@ -422,7 +440,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
   return (
     <div className="relative w-full h-full bg-[#0d0d12] overflow-hidden select-none font-sans">
       {/* 3D WebGL Canvas */}
-      <div ref={viewContainerRef} className="w-full h-full" />
+      <div ref={viewContainerRef} className="w-full h-full outline-none focus:outline-none select-none" />
 
       {/* Loading indicator */}
       {!isLoaded && (
@@ -434,6 +452,30 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
           <div className="text-ares-text-muted text-xs font-mono mt-1">
             Loading NASA MDEM200M Elevation Mesh (GCS_Mars_2000)...
           </div>
+        </div>
+      )}
+
+      {/* Active Comparison Indicator & 1-Click Dismiss Button */}
+      {(selectedCountry || selectedModel) && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-2.5 bg-ares-surface/95 backdrop-blur-md border border-ares-cyan/60 px-3.5 py-1.5 rounded-xl shadow-glow-cyan pointer-events-auto">
+          <div className="flex items-center space-x-1.5 text-xs font-mono text-ares-cyan">
+            <Box className="w-3.5 h-3.5 text-ares-cyan" />
+            <span className="font-bold">
+              Comparison Active: {selectedCountry ? selectedCountry.name : selectedModel.name}
+            </span>
+            {selectedCountry && <span className="opacity-75">({selectedCountry.areaKm2})</span>}
+          </div>
+          <button
+            onClick={() => {
+              handleClearCountry();
+              handleClearEarthModel();
+            }}
+            className="ml-2 px-2 py-0.5 rounded-md bg-ares-warning/20 hover:bg-ares-warning/30 border border-ares-warning/50 text-ares-warning text-[10px] font-mono font-bold transition-all flex items-center space-x-1"
+            title="Remove scale comparison overlay"
+          >
+            <X className="w-3 h-3" />
+            <span>Remove</span>
+          </button>
         </div>
       )}
 
@@ -497,7 +539,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
         {/* Toggle Auto Rotation */}
         <button
           onClick={() => {
-            setIsRotating(!isRotating);
+            setSpin(!isRotating);
           }}
           className="p-2.5 rounded-xl bg-ares-surface/90 hover:bg-ares-surface-alt border border-ares-border text-ares-text text-xs font-mono shadow-panel flex items-center space-x-2 transition-all"
           title={isRotating ? 'Pause Planetary Rotation' : 'Resume Planetary Rotation'}
