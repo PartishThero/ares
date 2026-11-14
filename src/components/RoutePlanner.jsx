@@ -330,10 +330,44 @@ export default function RoutePlanner({
                       </div>
                     </div>
 
-                    {/* Mission Assessment Advisory */}
+                    {/* Mission Assessment & Root-Cause Diagnosis */}
                     {pScore && (
-                      <div className="p-2 rounded-lg bg-ares-surface-alt/40 border border-ares-border/70 text-xs text-ares-text leading-relaxed">
-                        {pScore.recommendation}
+                      <div className="p-3 rounded-xl bg-ares-surface-alt/60 border border-ares-border space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-ares-text">
+                            {pScore.verdictTitle}
+                          </span>
+                          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${pScore.badgeClass}`}>
+                            {pScore.grade}
+                          </span>
+                        </div>
+
+                        {/* Diagnostic Factor Breakdown */}
+                        <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                          {pScore.diagnostics?.map((diag, i) => (
+                            <div key={i} className="p-1.5 rounded-lg bg-ares-bg/85 border border-ares-border/60 text-[10px] font-mono">
+                              <div className="flex items-center justify-between">
+                                <span className="text-ares-text-muted">{diag.factor}:</span>
+                                <span className={`font-bold ${
+                                  diag.status === 'optimal' ? 'text-emerald-400' :
+                                  diag.status === 'viable' ? 'text-ares-cyan' :
+                                  diag.status === 'warning' || diag.status === 'moderate' ? 'text-amber-400' :
+                                  'text-rose-400'
+                                }`}>
+                                  {diag.value}
+                                </span>
+                              </div>
+                              <div className="text-[9px] text-ares-text-muted truncate mt-0.5" title={diag.explanation}>
+                                {diag.explanation}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Actionable Mission Advice */}
+                        <div className="text-xs text-ares-text leading-relaxed pt-1 border-t border-ares-border/50">
+                          {pScore.recommendation}
+                        </div>
                       </div>
                     )}
 
