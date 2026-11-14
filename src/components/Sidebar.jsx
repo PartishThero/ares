@@ -55,9 +55,9 @@ export default function Sidebar({
   const tabs = [
     { id: 'inspector', label: 'Inspector', icon: <MapPin className="w-4 h-4" /> },
     { id: 'planner', label: 'Route', icon: <Navigation className="w-4 h-4" /> },
-    { id: 'comparison', label: 'Compare', icon: <GitCompare className="w-4 h-4" /> },
     { id: 'profile', label: 'Elevation', icon: <Mountain className="w-4 h-4" /> },
     { id: 'missions', label: 'Missions', icon: <Compass className="w-4 h-4" /> },
+    { id: 'comparison', label: 'Compare', icon: <GitCompare className="w-4 h-4" /> },
   ];
 
   return (
@@ -129,6 +129,7 @@ export default function Sidebar({
                 onCalculateRoute={onCalculateRoute}
                 isCalculating={isCalculating}
                 plannedRoute={plannedRoute}
+                allRoutes={allRoutes}
                 routeScore={routeScore}
                 onResetRoute={onResetRoute}
                 userPOIs={userPOIs}

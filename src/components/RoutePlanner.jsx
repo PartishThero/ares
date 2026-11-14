@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Zap, 
@@ -15,11 +15,14 @@ import {
   BatteryCharging,
   Droplets,
   Wind,
-  Info
+  Info,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { SCIENTIFIC_TARGETS } from '../data/scientificTargets';
 import { ROUTE_PROFILES } from '../algorithms/terrainCost';
 import { formatMarsCoords } from '../utils/coordinates';
+import { scoreRoute } from '../algorithms/routeScoring';
 
 export default function RoutePlanner({
   startCoord,
@@ -30,10 +33,26 @@ export default function RoutePlanner({
   onSelectProfile,
   isCalculating,
   plannedRoute,
+  allRoutes = {},
   routeScore,
   onResetRoute,
   userPOIs = []
 }) {
+  const [expandedProfiles, setExpandedProfiles] = useState({ [selectedProfileId]: true });
+
+  // Keep active profile expanded when it changes
+  useEffect(() => {
+    setExpandedProfiles((prev) => ({ ...prev, [selectedProfileId]: true }));
+  }, [selectedProfileId]);
+
+  const toggleExpandProfile = (e, profileId) => {
+    e.stopPropagation();
+    setExpandedProfiles((prev) => ({
+      ...prev,
+      [profileId]: !prev[profileId]
+    }));
+  };
+
   const allTargets = [...SCIENTIFIC_TARGETS, ...userPOIs];
 
   const dropdownTargets = allTargets.filter(
@@ -174,187 +193,197 @@ export default function RoutePlanner({
         </div>
       </div>
 
-      {/* 2. Route Optimization Profile Selection */}
-      <div className="space-y-2">
+      {/* 2. Route Optimization Options with Integrated Evaluation Dropdowns */}
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <div className="text-xs font-mono uppercase tracking-wider text-ares-text-muted font-bold">
-            2. Optimization Strategy
+            2. Routing Strategy & Evaluations
           </div>
           {isCalculating && (
             <div className="text-[11px] font-mono text-ares-accent flex items-center gap-1.5 animate-pulse">
               <span className="w-2 h-2 rounded-full bg-ares-accent" />
-              <span>Optimizing path...</span>
+              <span>Computing paths...</span>
             </div>
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {profiles.map((p) => {
             const isSelected = selectedProfileId === p.id;
+            const profileRoute = allRoutes[p.id];
+            const isExpanded = Boolean(expandedProfiles[p.id]);
+
+            const pScore = profileRoute?.metrics
+              ? scoreRoute(profileRoute.metrics, p.id === 'science' ? 95 : 75)
+              : null;
+
             return (
               <div
                 key={p.id}
-                onClick={() => onSelectProfile(p.id)}
-                className={`p-3 rounded-xl cursor-pointer border transition-all ${
+                className={`rounded-xl border transition-all overflow-hidden ${
                   isSelected
-                    ? 'bg-ares-surface-alt border-ares-accent shadow-glow-sm'
-                    : 'bg-ares-surface-alt/40 border-ares-border hover:bg-ares-surface-alt/80 hover:border-ares-border/80'
+                    ? 'bg-ares-surface-alt border-ares-accent shadow-panel ring-1 ring-ares-accent/50'
+                    : 'bg-ares-surface-alt/40 border-ares-border hover:bg-ares-surface-alt/70'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    {p.icon}
-                    <span className="text-xs font-bold text-ares-text">{p.name}</span>
+                {/* Profile Card Header (Click to Select) */}
+                <div
+                  onClick={() => onSelectProfile(p.id)}
+                  className="p-3 cursor-pointer flex flex-col space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      {p.icon}
+                      <span className="text-xs font-bold text-ares-text">{p.name}</span>
+                      {isSelected && (
+                        <span className="text-[9px] font-mono text-ares-accent uppercase font-bold px-1.5 py-0.5 rounded bg-ares-accent/20">
+                          Active
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      {pScore && (
+                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${pScore.badgeClass}`}>
+                          {pScore.score}/100
+                        </span>
+                      )}
+                      <button
+                        onClick={(e) => toggleExpandProfile(e, p.id)}
+                        className="p-1 rounded-lg text-ares-text-muted hover:text-white hover:bg-ares-bg transition-colors"
+                        title={isExpanded ? 'Hide Evaluation' : 'Show Evaluation'}
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-                    isSelected ? 'bg-ares-accent/20 border-ares-accent/50 text-ares-accent font-bold' : 'bg-ares-bg border-ares-border text-ares-text-muted'
-                  }`}>
-                    {p.badge}
-                  </span>
+
+                  <p className="text-xs text-ares-text-muted leading-snug">
+                    {p.desc}
+                  </p>
                 </div>
-                <p className="text-xs text-ares-text-muted mt-1 leading-snug">
-                  {p.desc}
-                </p>
+
+                {/* Pretty Integrated Evaluation Dropdown */}
+                {isExpanded && profileRoute && profileRoute.metrics && (
+                  <div className="p-3 bg-ares-bg/85 border-t border-ares-border/60 space-y-3">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-mono text-ares-text-muted uppercase tracking-wider text-[10px] font-bold">
+                        {p.name} Evaluation
+                      </span>
+                      {pScore && (
+                        <span className="text-[10px] font-mono text-ares-cyan font-semibold">
+                          Grade {pScore.grade.split(' ')[0]}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Quick Metrics Grid */}
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="p-2 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
+                        <span className="text-[10px] text-ares-text-muted block">Distance</span>
+                        <span className="font-bold text-ares-text font-mono">
+                          {profileRoute.metrics.totalDistanceKm} km
+                        </span>
+                      </div>
+
+                      <div className="p-2 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
+                        <span className="text-[10px] text-ares-text-muted block">Est. Time</span>
+                        <span className="font-bold text-ares-cyan font-mono">
+                          {profileRoute.metrics.estimatedDurationHours} h
+                        </span>
+                      </div>
+
+                      <div className="p-2 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
+                        <span className="text-[10px] text-ares-text-muted block">Hazard</span>
+                        <span className={`font-bold font-mono ${
+                          profileRoute.metrics.hazardExposurePercent > 15 ? 'text-ares-danger' : 'text-ares-success'
+                        }`}>
+                          {profileRoute.metrics.hazardExposurePercent}%
+                        </span>
+                      </div>
+
+                      <div className="p-2 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
+                        <span className="text-[10px] text-ares-text-muted block">Max Slope</span>
+                        <span className={`font-bold font-mono ${
+                          profileRoute.metrics.maxSlopeDeg > 15 ? 'text-ares-danger' : 'text-emerald-400'
+                        }`}>
+                          {profileRoute.metrics.maxSlopeDeg}°
+                        </span>
+                      </div>
+
+                      <div className="p-2 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
+                        <span className="text-[10px] text-ares-text-muted block">Climb</span>
+                        <span className="font-bold text-ares-text font-mono">
+                          +{profileRoute.metrics.elevationGainM} m
+                        </span>
+                      </div>
+
+                      <div className="p-2 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
+                        <span className="text-[10px] text-ares-text-muted block">Base Datum</span>
+                        <span className="font-bold text-ares-cyan font-mono">
+                          {profileRoute.metrics.baseElevationM} m
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Mission Assessment Advisory */}
+                    {pScore && (
+                      <div className="p-2 rounded-lg bg-ares-surface-alt/40 border border-ares-border/70 text-xs text-ares-text leading-relaxed">
+                        {pScore.recommendation}
+                      </div>
+                    )}
+
+                    {/* PLSS Consumables Snapshot */}
+                    {profileRoute.metrics.plssConsumables && (
+                      <div className="p-2.5 rounded-lg bg-ares-surface-alt/60 border border-ares-border space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-ares-cyan uppercase">
+                          <span className="flex items-center gap-1">
+                            <Activity className="w-3 h-3" />
+                            Life Support (PLSS)
+                          </span>
+                          <span className="text-ares-success font-mono font-normal">
+                            {profileRoute.metrics.plssConsumables.suitMobilityMargin}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                          <div>
+                            <span className="text-[10px] text-ares-text-muted block">Oxygen:</span>
+                            <span className="text-ares-text">
+                              {profileRoute.metrics.plssConsumables.oxygenLiters} L ({profileRoute.metrics.plssConsumables.oxygenKg} kg)
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-ares-text-muted block">Power Draw:</span>
+                            <span className="text-ares-warning">
+                              {profileRoute.metrics.plssConsumables.batteryWh?.toLocaleString()} Wh
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-ares-text-muted block">Cooling Water:</span>
+                            <span className="text-ares-cyan">
+                              {profileRoute.metrics.plssConsumables.coolingWaterKg} kg H₂O
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-ares-text-muted block">Safe Return:</span>
+                            <span className="text-emerald-400">
+                              {profileRoute.metrics.plssConsumables.pointOfSafeReturnKm} km
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       </div>
-
-      {/* 3. Route Evaluation & Metrics (Shown when a route is computed) */}
-      {plannedRoute && (
-        <div className="space-y-3 pt-3 border-t border-ares-border">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono uppercase tracking-wider text-ares-text-muted font-bold">
-              Traverse Evaluation
-            </span>
-            {routeScore && (
-              <span className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border ${routeScore.badgeClass}`}>
-                Score: {routeScore.score}/100 ({routeScore.grade.split(' ')[0]})
-              </span>
-            )}
-          </div>
-
-          {/* Primary Route Metrics Grid */}
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border">
-              <span className="text-[11px] text-ares-text-muted block font-sans">Total Distance</span>
-              <span className="text-base font-bold text-ares-text mt-0.5 block font-mono">
-                {plannedRoute.metrics.totalDistanceKm} km
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border">
-              <span className="text-[11px] text-ares-text-muted block font-sans">Estimated Time</span>
-              <span className="text-base font-bold text-ares-cyan mt-0.5 block font-mono">
-                {plannedRoute.metrics.estimatedDurationHours} hours
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border">
-              <span className="text-[11px] text-ares-text-muted block font-sans">Steepest Slope</span>
-              <span className={`text-base font-bold mt-0.5 block font-mono ${
-                plannedRoute.metrics.maxSlopeDeg > 15 ? 'text-ares-danger' : 'text-emerald-400'
-              }`}>
-                {plannedRoute.metrics.maxSlopeDeg}° Grade
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border">
-              <span className="text-[11px] text-ares-text-muted block font-sans">Hazard Exposure</span>
-              <span className={`text-base font-bold mt-0.5 block font-mono ${
-                plannedRoute.metrics.hazardExposurePercent > 20 ? 'text-ares-danger' : 'text-ares-success'
-              }`}>
-                {plannedRoute.metrics.hazardExposurePercent}% Area
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border">
-              <span className="text-[11px] text-ares-text-muted block font-sans">Elevation Change</span>
-              <span className="text-base font-bold text-ares-text mt-0.5 block font-mono">
-                +{plannedRoute.metrics.elevationGainM} m climb
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border">
-              <span className="text-[11px] text-ares-text-muted block font-sans">Starting Elevation</span>
-              <span className="text-base font-bold text-ares-cyan mt-0.5 block font-mono">
-                {plannedRoute.metrics.baseElevationM} m MOLA
-              </span>
-            </div>
-          </div>
-
-          {/* Mission Safety Assessment */}
-          {routeScore && (
-            <div className="p-3 rounded-xl bg-ares-surface-alt/50 border border-ares-border space-y-1.5">
-              <div className="text-[11px] font-mono text-ares-accent font-semibold uppercase tracking-wider flex items-center space-x-1.5">
-                <Info className="w-3.5 h-3.5" />
-                <span>Mission Assessment</span>
-              </div>
-              <p className="text-xs text-ares-text leading-relaxed font-sans">
-                {routeScore.recommendation}
-              </p>
-            </div>
-          )}
-
-          {/* Astronaut Life Support (PLSS) Consumables */}
-          {plannedRoute.metrics.plssConsumables && (
-            <div className="p-3 rounded-xl bg-ares-surface-alt/70 border border-ares-border space-y-2.5">
-              <div className="flex items-center justify-between text-xs font-bold text-ares-text">
-                <div className="flex items-center space-x-1.5 text-ares-cyan">
-                  <Activity className="w-4 h-4" />
-                  <span>Astronaut Life Support Consumables (PLSS)</span>
-                </div>
-                <span className="text-[11px] font-mono text-ares-success">
-                  {plannedRoute.metrics.plssConsumables.suitMobilityMargin}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2 rounded-lg bg-ares-bg/80 border border-ares-border">
-                  <span className="text-[10px] text-ares-text-muted flex items-center gap-1 font-sans">
-                    <Wind className="w-3 h-3 text-ares-cyan" />
-                    Oxygen Required
-                  </span>
-                  <span className="font-bold text-ares-text mt-0.5 block font-mono">
-                    {plannedRoute.metrics.plssConsumables.oxygenLiters} L ({plannedRoute.metrics.plssConsumables.oxygenKg} kg)
-                  </span>
-                </div>
-
-                <div className="p-2 rounded-lg bg-ares-bg/80 border border-ares-border">
-                  <span className="text-[10px] text-ares-text-muted flex items-center gap-1 font-sans">
-                    <Droplets className="w-3 h-3 text-ares-cyan" />
-                    Cooling Water
-                  </span>
-                  <span className="font-bold text-ares-cyan mt-0.5 block font-mono">
-                    {plannedRoute.metrics.plssConsumables.coolingWaterKg} kg H₂O
-                  </span>
-                </div>
-
-                <div className="p-2 rounded-lg bg-ares-bg/80 border border-ares-border">
-                  <span className="text-[10px] text-ares-text-muted flex items-center gap-1 font-sans">
-                    <BatteryCharging className="w-3 h-3 text-ares-warning" />
-                    Battery Power
-                  </span>
-                  <span className="font-bold text-ares-warning mt-0.5 block font-mono">
-                    {plannedRoute.metrics.plssConsumables.batteryWh?.toLocaleString()} Wh
-                  </span>
-                </div>
-
-                <div className="p-2 rounded-lg bg-ares-bg/80 border border-ares-border">
-                  <span className="text-[10px] text-ares-text-muted flex items-center gap-1 font-sans">
-                    <CheckCircle className="w-3 h-3 text-emerald-400" />
-                    Point of Safe Return
-                  </span>
-                  <span className="font-bold text-emerald-400 mt-0.5 block font-mono">
-                    {plannedRoute.metrics.plssConsumables.pointOfSafeReturnKm} km from base
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
