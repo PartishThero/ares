@@ -296,6 +296,12 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
     const modelLayer = modelGraphicsLayerRef.current;
     if (!view || !modelLayer) return;
 
+    // Toggle off if already selected
+    if (selectedModel?.id === model.id) {
+      handleClearEarthModel();
+      return;
+    }
+
     setIsLoadingModel(true);
     setSelectedModel(model);
     setSpin(false);
@@ -349,6 +355,12 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
     const view = sceneViewRef.current;
     const regionLayer = regionGraphicsLayerRef.current;
     if (!view || !regionLayer) return;
+
+    // Toggle off if already selected
+    if (selectedCountry?.id === country.id) {
+      handleClearCountry();
+      return;
+    }
 
     setSelectedCountry(country);
     setSpin(false);

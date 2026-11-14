@@ -118,15 +118,27 @@
 /* ArcGIS 3D Viewport Focus Ring & Border Elimination */
 .esri-view,
 .esri-view:focus,
+.esri-view:focus-visible,
 .esri-view *:focus,
+.esri-view *:focus-visible,
 .esri-view-surface,
 .esri-view-surface:focus,
-.esri-view-surface canvas:focus {
+.esri-view-surface:focus-visible,
+.esri-view-surface canvas,
+.esri-view-surface canvas:focus,
+.esri-view-surface canvas:focus-visible,
+.esri-view-root,
+.esri-view-root:focus,
+.esri-view-root:focus-visible {
   outline: none !important;
   box-shadow: none !important;
   border: none !important;
 }
 
-canvas:focus {
+canvas,
+canvas:focus,
+canvas:focus-visible {
   outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
