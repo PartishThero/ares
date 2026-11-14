@@ -32,6 +32,25 @@ export default function RoutePlanner({
 }) {
   const allTargets = [...SCIENTIFIC_TARGETS, ...userPOIs];
 
+  // Curate dropdown list to user waypoints, landing sites, and Tier 1/2 landmarks
+  const dropdownTargets = allTargets.filter(
+    (t) => t.isUserCreated || t.tier <= 2 || t.category === 'Landing Site' || t.category?.includes('Formation')
+  );
+
+  const matchedStartTarget = allTargets.find(
+    (t) =>
+      startCoord &&
+      Math.abs(t.coordinates[0] - startCoord[0]) < 0.001 &&
+      Math.abs(t.coordinates[1] - startCoord[1]) < 0.001
+  );
+
+  const matchedDestTarget = allTargets.find(
+    (t) =>
+      destCoord &&
+      Math.abs(t.coordinates[0] - destCoord[0]) < 0.001 &&
+      Math.abs(t.coordinates[1] - destCoord[1]) < 0.001
+  );
+
   const profiles = [
     {
       id: 'safest',
@@ -85,24 +104,23 @@ export default function RoutePlanner({
             </span>
           </div>
           <select
-            value={
-              allTargets.find(
-                (t) =>
-                  startCoord &&
-                  Math.abs(t.coordinates[0] - startCoord[0]) < 0.001 &&
-                  Math.abs(t.coordinates[1] - startCoord[1]) < 0.001
-              )?.id || ''
-            }
+            value={matchedStartTarget ? matchedStartTarget.id : startCoord ? 'custom_start' : ''}
             onChange={(e) => {
+              if (e.target.value === 'custom_start') return;
               const target = allTargets.find((t) => t.id === e.target.value);
               if (target) onSelectStart(target.coordinates);
             }}
-            className="w-full bg-ares-bg border border-ares-border rounded-md px-2.5 py-1.5 text-xs text-ares-text font-mono focus:outline-none focus:border-ares-accent"
+            className="w-full bg-ares-bg border border-ares-border rounded-md px-2.5 py-1.5 text-xs text-ares-text font-mono focus:outline-none focus:border-ares-accent truncate"
           >
             <option value="">-- Choose Base Location or Click Map --</option>
-            {allTargets.map((t) => (
+            {startCoord && !matchedStartTarget && (
+              <option value="custom_start">
+                Map Click: {formatDecimalCoords(startCoord[0], startCoord[1])}
+              </option>
+            )}
+            {dropdownTargets.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.name} {t.isUserCreated ? '(Custom)' : `(${t.priority.split(' ')[0]})`}
+                {t.name} {t.isUserCreated ? '(Custom)' : `(${t.priority?.split(' ')[0] || t.category || 'Target'})`}
               </option>
             ))}
           </select>
@@ -119,24 +137,23 @@ export default function RoutePlanner({
             </span>
           </div>
           <select
-            value={
-              allTargets.find(
-                (t) =>
-                  destCoord &&
-                  Math.abs(t.coordinates[0] - destCoord[0]) < 0.001 &&
-                  Math.abs(t.coordinates[1] - destCoord[1]) < 0.001
-              )?.id || ''
-            }
+            value={matchedDestTarget ? matchedDestTarget.id : destCoord ? 'custom_dest' : ''}
             onChange={(e) => {
+              if (e.target.value === 'custom_dest') return;
               const target = allTargets.find((t) => t.id === e.target.value);
               if (target) onSelectDest(target.coordinates);
             }}
-            className="w-full bg-ares-bg border border-ares-border rounded-md px-2.5 py-1.5 text-xs text-ares-text font-mono focus:outline-none focus:border-ares-accent"
+            className="w-full bg-ares-bg border border-ares-border rounded-md px-2.5 py-1.5 text-xs text-ares-text font-mono focus:outline-none focus:border-ares-accent truncate"
           >
             <option value="">-- Choose Scientific Target or Click Map --</option>
-            {allTargets.map((t) => (
+            {destCoord && !matchedDestTarget && (
+              <option value="custom_dest">
+                Map Click: {formatDecimalCoords(destCoord[0], destCoord[1])}
+              </option>
+            )}
+            {dropdownTargets.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.name} (Val: {t.scienceValue})
+                {t.name} ({t.category || 'Target'})
               </option>
             ))}
           </select>

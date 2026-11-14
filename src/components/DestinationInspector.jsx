@@ -44,7 +44,8 @@ export default function DestinationInspector({
   }
 
   const { coordinates, formattedCoords, elevationMeters, geology, hazard, thermal, nearestPOI, atmosphericPressurePa } = inspectionData;
-  const isTargetPOI = nearestPOI?.distanceKm < 0.25 && nearestPOI.target;
+  const targetThresholdKm = nearestPOI?.target?.tier === 1 ? 30 : nearestPOI?.target?.isUserCreated ? 2 : 10;
+  const isTargetPOI = Boolean(nearestPOI?.target && nearestPOI.distanceKm <= targetThresholdKm);
   const targetObj = isTargetPOI ? nearestPOI.target : null;
   const isUserPOI = targetObj?.isUserCreated;
 
@@ -128,7 +129,12 @@ export default function DestinationInspector({
             {targetObj.description}
           </p>
           <div className="text-[11px] font-mono space-y-1 pt-1 border-t border-ares-accent/20">
-            <div><span className="text-ares-text-muted">Mineralogy:</span> <span className="text-ares-text">{targetObj.mineralogy}</span></div>
+            {targetObj.category && (
+              <div><span className="text-ares-text-muted">IAU Nomenclature:</span> <span className="text-ares-cyan">{targetObj.category}</span></div>
+            )}
+            {targetObj.mineralogy && (
+              <div><span className="text-ares-text-muted">Mineralogy:</span> <span className="text-ares-text">{targetObj.mineralogy}</span></div>
+            )}
             {targetObj.instruments && (
               <div><span className="text-ares-text-muted">Instruments:</span> <span className="text-ares-cyan">{targetObj.instruments.join(', ')}</span></div>
             )}

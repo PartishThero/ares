@@ -1,4 +1,6 @@
-export const SCIENTIFIC_TARGETS = [
+import { NASA_MARS_TREK_TARGETS } from './nasaMarsTrek2000.js';
+
+export const GALE_SCIENTIFIC_TARGETS = [
   {
     id: 'poi-aeolis-mons-summit',
     name: 'Mount Sharp Summit (Aeolis Mons)',
@@ -447,4 +449,19 @@ export const SCIENTIFIC_TARGETS = [
     instruments: ['ChemCam', 'APXS'],
     observations: 'Petrology indicates source rocks originated high on the crater rim and were transported over 15 kilometers by fast-flowing surface streams.'
   }
+];
+
+// Deduplicate and combine high-detail Gale targets with full NASA Mars Trek nomenclature catalog (2,038 planetary features)
+const seenNames = new Set(GALE_SCIENTIFIC_TARGETS.map((t) => t.name.toLowerCase()));
+
+const uniqueTrekFeatures = (NASA_MARS_TREK_TARGETS || [])
+  .filter((tf) => !seenNames.has(tf.name.toLowerCase()))
+  .map((tf) => ({
+    ...tf,
+    priority: tf.tier === 1 ? 'Major Planetary Landmark' : tf.tier === 2 ? 'Prominent Regional Feature' : 'IAU Surface Target'
+  }));
+
+export const SCIENTIFIC_TARGETS = [
+  ...GALE_SCIENTIFIC_TARGETS,
+  ...uniqueTrekFeatures
 ];

@@ -49,16 +49,18 @@ export default function Header({
   }, []);
 
   const filteredTargets = allTargets.filter((t) => {
-    const matchesQuery = t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.category.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = searchQuery.toLowerCase();
+    const cat = (t.category || '').toLowerCase();
+    const name = (t.name || '').toLowerCase();
+    const matchesQuery = name.includes(q) || cat.includes(q);
     
     if (!matchesQuery) return false;
     if (activeFilter === 'landmarks') return t.tier === 1;
     if (activeFilter === 'user') return t.isUserCreated;
-    if (activeFilter === 'science') return t.category.includes('Formation') || t.category.includes('Stratigraphic') || t.category.includes('Lakebed');
-    if (activeFilter === 'drills') return t.category.includes('Drill');
+    if (activeFilter === 'science') return cat.includes('formation') || cat.includes('stratigraphic') || cat.includes('lakebed') || t.tier <= 2;
+    if (activeFilter === 'drills') return cat.includes('drill');
     return true;
-  });
+  }).slice(0, 30);
 
   return (
     <header className="absolute top-3 left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-2.5 pointer-events-none select-none">
@@ -185,7 +187,7 @@ export default function Header({
                         <span className="truncate">{target.name}</span>
                       </div>
                       <div className="text-[10px] text-ares-text-muted font-mono truncate pl-4.5">
-                        {target.category} • {target.elevation.toLocaleString()} m (MOLA)
+                        {target.category || 'Surface Feature'} • {target.elevation != null ? `${target.elevation.toLocaleString()} m (MOLA)` : 'MOLA Datum'}
                       </div>
                     </div>
                     <span className="text-[10px] font-mono text-ares-cyan shrink-0 ml-2">

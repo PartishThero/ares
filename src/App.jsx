@@ -87,7 +87,16 @@ export default function App() {
       try {
         const safestRoute = planAresRoute(start, dest, waypoints, ROUTE_PROFILES.SAFEST);
         const shortestRoute = planAresRoute(start, dest, [], ROUTE_PROFILES.SHORTEST);
-        const scienceRoute = planAresRoute(start, dest, waypoints.length > 0 ? waypoints : [[137.3820, -4.8920]], ROUTE_PROFILES.SCIENCE);
+        
+        // Smart science waypoint: only use Gale default if both points are within Gale Crater
+        const isWithinGale = Math.abs(start[0] - 137.4) < 0.5 && Math.abs(dest[0] - 137.4) < 0.5;
+        const scienceWaypoints = waypoints.length > 0 
+          ? waypoints 
+          : isWithinGale 
+          ? [[137.3820, -4.8920]] 
+          : [];
+
+        const scienceRoute = planAresRoute(start, dest, scienceWaypoints, ROUTE_PROFILES.SCIENCE);
 
         const routesMap = {
           safest: safestRoute,
@@ -244,6 +253,18 @@ export default function App() {
         onSelectMissionAndLaunch={(mission) => {
           setViewMode('map');
           handleLoadAndPlanMission(mission);
+        }}
+        onLaunchUncharted={() => {
+          setViewMode('map');
+          setInteractionMode('explore_uncharted');
+        }}
+        onLaunchRadiation={() => {
+          setViewMode('map');
+          setIsRadiationOpen(true);
+        }}
+        onLaunchCustomMission={() => {
+          setViewMode('map');
+          setIsCreateMissionOpen(true);
         }}
       />
     );

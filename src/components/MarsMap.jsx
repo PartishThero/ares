@@ -156,6 +156,24 @@ export default function MarsMap({
     });
 
     map.on('singleclick', (evt) => {
+      let clickedFeatureTarget = null;
+      map.forEachFeatureAtPixel(evt.pixel, (feat) => {
+        const tData = feat.get('targetData');
+        if (tData) {
+          clickedFeatureTarget = tData;
+          return true;
+        }
+      });
+
+      if (clickedFeatureTarget) {
+        if (interactionMode === 'explore_uncharted' && onPlanUnchartedTraverse) {
+          onPlanUnchartedTraverse(clickedFeatureTarget.coordinates);
+        } else {
+          onSelectCoordinate(clickedFeatureTarget.coordinates[0], clickedFeatureTarget.coordinates[1]);
+        }
+        return;
+      }
+
       const [lon, lat] = evt.coordinate;
       if (lon >= -180 && lon <= 180 && lat >= -90 && lat <= 90) {
         if (interactionMode === 'explore_uncharted' && onPlanUnchartedTraverse) {
@@ -268,19 +286,27 @@ export default function MarsMap({
 
     if (showPOIs) {
       const allTargets = [...SCIENTIFIC_TARGETS, ...userPOIs];
+      
+      let viewExtent = null;
+      if (mapRef.current && currentZoom >= 6.5) {
+        try {
+          viewExtent = mapRef.current.getView().calculateExtent(mapRef.current.getSize());
+        } catch (_) {}
+      }
 
       allTargets.forEach((target) => {
         const tier = target.tier || (target.isUserCreated ? 1 : 2);
         
+        // Semantic zoom filtering
         let shouldRender = true;
         if (declutterLevel === 'essential') {
           shouldRender = tier === 1 || target.isUserCreated;
         } else if (declutterLevel === 'all') {
           shouldRender = true;
         } else {
-          if (currentZoom < 10.2) {
+          if (currentZoom < 5.5) {
             shouldRender = tier === 1 || target.isUserCreated;
-          } else if (currentZoom < 12.0) {
+          } else if (currentZoom < 9.0) {
             shouldRender = tier <= 2 || target.isUserCreated;
           } else {
             shouldRender = true;
@@ -289,8 +315,19 @@ export default function MarsMap({
 
         if (!shouldRender) return;
 
+        // Viewport bounding cull for 60fps performance
+        if (viewExtent) {
+          const [minX, minY, maxX, maxY] = viewExtent;
+          const [lon, lat] = target.coordinates;
+          const pad = 0.5;
+          if (lon < minX - pad || lon > maxX + pad || lat < minY - pad || lat > maxY + pad) {
+            return;
+          }
+        }
+
         const isUser = target.isUserCreated;
         const isTier1 = tier === 1;
+        const isLandingSite = target.category === 'Landing Site' || target.name.toLowerCase().includes('landing');
 
         const feature = new Feature({
           geometry: new Point(target.coordinates),
@@ -301,23 +338,28 @@ export default function MarsMap({
 
         let pinColor = '#38bdf8';
         if (isUser) pinColor = '#a855f7';
+        else if (isLandingSite) pinColor = '#fbbf24';
         else if (isTier1) pinColor = '#c47b50';
+        else if (target.category?.includes('Mons') || target.category?.includes('Peak')) pinColor = '#38bdf8';
         else if (target.category?.includes('Drill')) pinColor = '#91a68b';
+        else pinColor = '#cbd5e1';
+
+        const showLabel = isTier1 || isUser || isLandingSite || currentZoom >= 10.5;
 
         feature.setStyle(
           new Style({
             image: new CircleStyle({
-              radius: isUser ? 6 : isTier1 ? 5.5 : 4,
+              radius: isUser ? 6 : isLandingSite ? 6 : isTier1 ? 5 : 3.5,
               fill: new Fill({ color: pinColor }),
-              stroke: new Stroke({ color: '#ffffff', width: isUser ? 2 : 1.5 })
+              stroke: new Stroke({ color: '#ffffff', width: isUser || isLandingSite ? 2 : 1.2 })
             }),
-            text: new Text({
-              text: isTier1 || currentZoom >= 11.5 ? target.name : '',
-              font: `${isTier1 ? '600 10px' : '500 9px'} "JetBrains Mono", monospace`,
-              fill: new Fill({ color: isUser ? '#d8b4fe' : '#e8e4dc' }),
+            text: showLabel ? new Text({
+              text: target.name,
+              font: `${isTier1 || isLandingSite ? '600 10px' : '500 9px'} "JetBrains Mono", monospace`,
+              fill: new Fill({ color: isUser ? '#d8b4fe' : isLandingSite ? '#fef08a' : '#e8e4dc' }),
               stroke: new Stroke({ color: '#17191c', width: 3 }),
-              offsetY: isTier1 ? -11 : -9
-            })
+              offsetY: isTier1 || isLandingSite ? -12 : -9
+            }) : undefined
           })
         );
         source.addFeature(feature);

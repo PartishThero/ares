@@ -95,38 +95,69 @@ export function gridToCoord(col, row) {
   return [lon, lat];
 }
 
-let cachedGrid = null;
-export function getOrCreateGrid() {
-  if (cachedGrid) return cachedGrid;
-
-  const { cols, rows } = GALE_BOUNDS;
-  const grid = new Array(rows);
-
-  for (let r = 0; r < rows; r++) {
-    grid[r] = new Array(cols);
-    for (let c = 0; c < cols; c++) {
-      const [lon, lat] = gridToCoord(c, r);
-      const elevation = estimateGaleElevation(lon, lat);
-      const hazard = getCoordinateHazardFactor(lon, lat);
-      grid[r][c] = { col: c, row: r, lon, lat, elevation, hazard };
-    }
+function aStarSegment(startCoord, destCoord, profile = ROUTE_PROFILES.SAFEST) {
+  const directDist = calculateMarsDistanceKm(startCoord, destCoord);
+  if (directDist < 0.005) {
+    const elev = estimateGaleElevation(startCoord[0], startCoord[1]);
+    const hazard = getCoordinateHazardFactor(startCoord[0], startCoord[1]);
+    return [{ col: 0, row: 0, lon: startCoord[0], lat: startCoord[1], elevation: elev, hazard }];
   }
 
-  cachedGrid = grid;
-  return grid;
-}
+  // Adaptive dynamic bounding box enclosing both points with safety buffer
+  const minLon = Math.min(startCoord[0], destCoord[0]);
+  const maxLon = Math.max(startCoord[0], destCoord[0]);
+  const minLat = Math.min(startCoord[1], destCoord[1]);
+  const maxLat = Math.max(startCoord[1], destCoord[1]);
 
-function aStarSegment(startCoord, destCoord, profile = ROUTE_PROFILES.SAFEST) {
-  const grid = getOrCreateGrid();
-  const startGrid = coordToGrid(startCoord[0], startCoord[1]);
-  const destGrid = coordToGrid(destCoord[0], destCoord[1]);
+  const spanLon = Math.max(0.04, maxLon - minLon);
+  const spanLat = Math.max(0.04, maxLat - minLat);
+  const padLon = Math.max(spanLon * 0.30, 0.025);
+  const padLat = Math.max(spanLat * 0.30, 0.025);
 
-  const startIndex = `${startGrid.col},${startGrid.row}`;
-  const destIndex = `${destGrid.col},${destGrid.row}`;
+  const bMinLon = Math.max(-180, minLon - padLon);
+  const bMaxLon = Math.min(180, maxLon + padLon);
+  const bMinLat = Math.max(-89.5, minLat - padLat);
+  const bMaxLat = Math.min(89.5, maxLat + padLat);
 
-  if (startIndex === destIndex) {
-    const node = grid[startGrid.row][startGrid.col];
-    return [node];
+  const COLS = 50;
+  const ROWS = 50;
+
+  const toCol = (lon) => Math.max(0, Math.min(COLS - 1, Math.round(((lon - bMinLon) / (bMaxLon - bMinLon)) * (COLS - 1))));
+  const toRow = (lat) => Math.max(0, Math.min(ROWS - 1, Math.round(((lat - bMinLat) / (bMaxLat - bMinLat)) * (ROWS - 1))));
+  const toLon = (c) => bMinLon + (c / (COLS - 1)) * (bMaxLon - bMinLon);
+  const toLat = (r) => bMinLat + (r / (ROWS - 1)) * (bMaxLat - bMinLat);
+
+  const startCol = toCol(startCoord[0]);
+  const startRow = toRow(startCoord[1]);
+  const destCol = toCol(destCoord[0]);
+  const destRow = toRow(destCoord[1]);
+
+  // If endpoints map to identical cell, construct a fine interpolated line
+  if (startCol === destCol && startRow === destRow) {
+    const sElev = estimateGaleElevation(startCoord[0], startCoord[1]);
+    const dElev = estimateGaleElevation(destCoord[0], destCoord[1]);
+    return [
+      { col: startCol, row: startRow, lon: startCoord[0], lat: startCoord[1], elevation: sElev, hazard: getCoordinateHazardFactor(startCoord[0], startCoord[1]) },
+      { col: destCol, row: destRow, lon: destCoord[0], lat: destCoord[1], elevation: dElev, hazard: getCoordinateHazardFactor(destCoord[0], destCoord[1]) }
+    ];
+  }
+
+  // Construct dynamic terrain & hazard mesh
+  const grid = new Array(ROWS);
+  for (let r = 0; r < ROWS; r++) {
+    grid[r] = new Array(COLS);
+    for (let c = 0; c < COLS; c++) {
+      const lon = toLon(c);
+      const lat = toLat(r);
+      grid[r][c] = {
+        col: c,
+        row: r,
+        lon,
+        lat,
+        elevation: estimateGaleElevation(lon, lat),
+        hazard: getCoordinateHazardFactor(lon, lat)
+      };
+    }
   }
 
   const openSet = new MinHeap();
@@ -134,9 +165,12 @@ function aStarSegment(startCoord, destCoord, profile = ROUTE_PROFILES.SAFEST) {
   const cameFrom = new Map();
   const gScore = new Map();
 
-  gScore.set(startIndex, 0);
+  const startKey = `${startCol},${startRow}`;
+  const destKey = `${destCol},${destRow}`;
+  gScore.set(startKey, 0);
+
   const initialH = calculateMarsDistanceKm(startCoord, destCoord) * profile.weights.distance;
-  openSet.push({ col: startGrid.col, row: startGrid.row, f: initialH });
+  openSet.push({ col: startCol, row: startRow, f: initialH });
 
   const neighbors = [
     { dc: 0, dr: 1 },
@@ -150,20 +184,34 @@ function aStarSegment(startCoord, destCoord, profile = ROUTE_PROFILES.SAFEST) {
   ];
 
   let iterations = 0;
-  const MAX_ITERATIONS = 6000;
+  const MAX_ITERATIONS = 8000;
+  let reachedDest = false;
 
   while (!openSet.isEmpty() && iterations < MAX_ITERATIONS) {
     iterations++;
     const current = openSet.pop();
     const currentKey = `${current.col},${current.row}`;
 
-    if (current.col === destGrid.col && current.row === destGrid.row) {
+    if (current.col === destCol && current.row === destRow) {
+      reachedDest = true;
       const path = [];
       let currKey = currentKey;
       while (currKey) {
         const [c, r] = currKey.split(',').map(Number);
-        path.unshift(grid[r][c]);
+        path.unshift({ ...grid[r][c] });
         currKey = cameFrom.get(currKey);
+      }
+      // Guarantee exact endpoints match user clicks
+      if (path.length > 0) {
+        path[0].lon = startCoord[0];
+        path[0].lat = startCoord[1];
+        path[0].elevation = estimateGaleElevation(startCoord[0], startCoord[1]);
+        path[0].hazard = getCoordinateHazardFactor(startCoord[0], startCoord[1]);
+
+        path[path.length - 1].lon = destCoord[0];
+        path[path.length - 1].lat = destCoord[1];
+        path[path.length - 1].elevation = estimateGaleElevation(destCoord[0], destCoord[1]);
+        path[path.length - 1].hazard = getCoordinateHazardFactor(destCoord[0], destCoord[1]);
       }
       return path;
     }
@@ -176,9 +224,7 @@ function aStarSegment(startCoord, destCoord, profile = ROUTE_PROFILES.SAFEST) {
       const nc = current.col + nb.dc;
       const nr = current.row + nb.dr;
 
-      if (nc < 0 || nc >= GALE_BOUNDS.cols || nr < 0 || nr >= GALE_BOUNDS.rows) {
-        continue;
-      }
+      if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
 
       const neighborKey = `${nc},${nr}`;
       if (closedSet.has(neighborKey)) continue;
@@ -212,10 +258,23 @@ function aStarSegment(startCoord, destCoord, profile = ROUTE_PROFILES.SAFEST) {
     }
   }
 
-  return [
-    grid[startGrid.row][startGrid.col],
-    grid[destGrid.row][destGrid.col]
-  ];
+  // Fallback: geodesic direct connection with interpolated elevations and hazards
+  const STEPS = 20;
+  const fallbackPath = [];
+  for (let i = 0; i <= STEPS; i++) {
+    const t = i / STEPS;
+    const lon = startCoord[0] + (destCoord[0] - startCoord[0]) * t;
+    const lat = startCoord[1] + (destCoord[1] - startCoord[1]) * t;
+    fallbackPath.push({
+      col: Math.round(startCol + (destCol - startCol) * t),
+      row: Math.round(startRow + (destRow - startRow) * t),
+      lon,
+      lat,
+      elevation: estimateGaleElevation(lon, lat),
+      hazard: getCoordinateHazardFactor(lon, lat)
+    });
+  }
+  return fallbackPath;
 }
 
 export function planAresRoute(startCoord, destCoord, waypoints = [], profile = ROUTE_PROFILES.SAFEST) {

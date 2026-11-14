@@ -22,6 +22,9 @@ export default function CustomMissionModal({
   currentDestCoord
 }) {
   const allTargets = [...SCIENTIFIC_TARGETS, ...userPOIs];
+  const modalTargets = allTargets.filter(
+    (t) => t.isUserCreated || t.tier <= 2 || t.category === 'Landing Site'
+  );
 
   const [name, setName] = useState('Gediz Ridge Escarpment Recon');
   const [code, setCode] = useState(`EVA-MS-${Math.floor(Math.random() * 80 + 20)}`);
@@ -142,9 +145,9 @@ export default function CustomMissionModal({
               <select
                 value={startId}
                 onChange={(e) => setStartId(e.target.value)}
-                className="w-full bg-ares-bg border border-ares-border rounded-lg px-2.5 py-2 text-ares-text focus:outline-none focus:border-ares-accent"
+                className="w-full bg-ares-bg border border-ares-border rounded-lg px-2.5 py-2 text-ares-text focus:outline-none focus:border-ares-accent truncate"
               >
-                {allTargets.map((t) => (
+                {modalTargets.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
                   </option>
@@ -160,9 +163,9 @@ export default function CustomMissionModal({
               <select
                 value={destId}
                 onChange={(e) => setDestId(e.target.value)}
-                className="w-full bg-ares-bg border border-ares-border rounded-lg px-2.5 py-2 text-ares-text focus:outline-none focus:border-ares-accent"
+                className="w-full bg-ares-bg border border-ares-border rounded-lg px-2.5 py-2 text-ares-text focus:outline-none focus:border-ares-accent truncate"
               >
-                {allTargets.map((t) => (
+                {modalTargets.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
                   </option>
@@ -236,3 +239,4 @@ export default function CustomMissionModal({
     </div>
   );
 }
+
