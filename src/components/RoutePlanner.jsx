@@ -27,8 +27,11 @@ export default function RoutePlanner({
   isCalculating,
   plannedRoute,
   routeScore,
-  onResetRoute
+  onResetRoute,
+  userPOIs = []
 }) {
+  const allTargets = [...SCIENTIFIC_TARGETS, ...userPOIs];
+
   const profiles = [
     {
       id: 'safest',
@@ -83,7 +86,7 @@ export default function RoutePlanner({
           </div>
           <select
             value={
-              SCIENTIFIC_TARGETS.find(
+              allTargets.find(
                 (t) =>
                   startCoord &&
                   Math.abs(t.coordinates[0] - startCoord[0]) < 0.001 &&
@@ -91,15 +94,15 @@ export default function RoutePlanner({
               )?.id || ''
             }
             onChange={(e) => {
-              const target = SCIENTIFIC_TARGETS.find((t) => t.id === e.target.value);
+              const target = allTargets.find((t) => t.id === e.target.value);
               if (target) onSelectStart(target.coordinates);
             }}
             className="w-full bg-ares-bg border border-ares-border rounded-md px-2.5 py-1.5 text-xs text-ares-text font-mono focus:outline-none focus:border-ares-accent"
           >
             <option value="">-- Choose Base Location or Click Map --</option>
-            {SCIENTIFIC_TARGETS.map((t) => (
+            {allTargets.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.name} ({t.priority.split(' ')[0]})
+                {t.name} {t.isUserCreated ? '(Custom)' : `(${t.priority.split(' ')[0]})`}
               </option>
             ))}
           </select>
@@ -117,7 +120,7 @@ export default function RoutePlanner({
           </div>
           <select
             value={
-              SCIENTIFIC_TARGETS.find(
+              allTargets.find(
                 (t) =>
                   destCoord &&
                   Math.abs(t.coordinates[0] - destCoord[0]) < 0.001 &&
@@ -125,13 +128,13 @@ export default function RoutePlanner({
               )?.id || ''
             }
             onChange={(e) => {
-              const target = SCIENTIFIC_TARGETS.find((t) => t.id === e.target.value);
+              const target = allTargets.find((t) => t.id === e.target.value);
               if (target) onSelectDest(target.coordinates);
             }}
             className="w-full bg-ares-bg border border-ares-border rounded-md px-2.5 py-1.5 text-xs text-ares-text font-mono focus:outline-none focus:border-ares-accent"
           >
             <option value="">-- Choose Scientific Target or Click Map --</option>
-            {SCIENTIFIC_TARGETS.map((t) => (
+            {allTargets.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name} (Val: {t.scienceValue})
               </option>

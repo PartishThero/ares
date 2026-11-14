@@ -10,7 +10,10 @@ import {
   Compass, 
   Image as ImageIcon,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Plus,
+  Trash2,
+  Crosshair
 } from 'lucide-react';
 import { formatMarsCoords } from '../utils/coordinates';
 
@@ -19,7 +22,10 @@ export default function DestinationInspector({
   onSetAsStart,
   onSetAsDest,
   onCenterMap,
-  onSelectPOI
+  onSelectPOI,
+  onOpenAddPOI,
+  onDeleteUserPOI,
+  onPlanUnchartedTraverse
 }) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
@@ -31,34 +37,49 @@ export default function DestinationInspector({
         </div>
         <h3 className="font-semibold text-ares-text text-sm">No Location Selected</h3>
         <p className="text-xs mt-1 text-ares-text-muted/80 max-w-xs">
-          Click anywhere on the Mars surface map or select a scientific point of interest to inspect topography, stratigraphy, and hazards.
+          Click anywhere on the Mars surface map or search for a crater, ridge, or scientific target to inspect topography, stratigraphy, and hazards.
         </p>
       </div>
     );
   }
 
   const { coordinates, formattedCoords, elevationMeters, geology, hazard, thermal, nearestPOI, atmosphericPressurePa } = inspectionData;
-  const isTargetPOI = nearestPOI?.distanceKm < 0.2 && nearestPOI.target;
+  const isTargetPOI = nearestPOI?.distanceKm < 0.25 && nearestPOI.target;
   const targetObj = isTargetPOI ? nearestPOI.target : null;
+  const isUserPOI = targetObj?.isUserCreated;
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-4 select-none">
       <div className="space-y-1.5 pb-3 border-b border-ares-border">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-ares-accent font-semibold flex items-center gap-1">
+          <span className={`text-[10px] font-mono uppercase tracking-wider font-semibold flex items-center gap-1 ${
+            isUserPOI ? 'text-purple-400' : 'text-ares-accent'
+          }`}>
             <MapPin className="w-3 h-3" />
-            {isTargetPOI ? 'Verified Scientific Target' : 'Martian Surface Target'}
+            {isUserPOI ? 'Astronaut Field Waypoint' : isTargetPOI ? 'Verified Scientific Target' : 'Martian Surface Target'}
           </span>
-          <button
-            onClick={() => onCenterMap(coordinates)}
-            className="text-[11px] font-mono text-ares-text-muted hover:text-ares-accent transition-colors flex items-center gap-1"
-          >
-            <span>Center</span>
-            <ExternalLink className="w-3 h-3" />
-          </button>
+          <div className="flex items-center space-x-2">
+            {isUserPOI && onDeleteUserPOI && (
+              <button
+                onClick={() => onDeleteUserPOI(targetObj.id)}
+                className="text-[11px] font-mono text-ares-danger hover:underline flex items-center gap-1"
+                title="Remove this astronaut waypoint"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Delete</span>
+              </button>
+            )}
+            <button
+              onClick={() => onCenterMap(coordinates)}
+              className="text-[11px] font-mono text-ares-text-muted hover:text-ares-accent transition-colors flex items-center gap-1"
+            >
+              <span>Center</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
+          </div>
         </div>
         <h2 className="text-base font-bold text-ares-text leading-tight">
-          {targetObj ? targetObj.name : 'Surface Location'}
+          {targetObj ? targetObj.name : 'Uncharted Surface Location'}
         </h2>
         <div className="text-xs font-mono text-ares-cyan font-medium">
           {formattedCoords}
@@ -75,7 +96,7 @@ export default function DestinationInspector({
             {elevationMeters.toLocaleString()} m
           </div>
           <div className="text-[10px] text-ares-text-muted/80 mt-0.5">
-            {elevationMeters < -4000 ? 'Crater floor' : 'Mount Sharp slope'}
+            {elevationMeters < -4000 ? 'Crater floor' : 'Mount Sharp flank'}
           </div>
         </div>
 
@@ -108,7 +129,9 @@ export default function DestinationInspector({
           </p>
           <div className="text-[11px] font-mono space-y-1 pt-1 border-t border-ares-accent/20">
             <div><span className="text-ares-text-muted">Mineralogy:</span> <span className="text-ares-text">{targetObj.mineralogy}</span></div>
-            <div><span className="text-ares-text-muted">Instruments:</span> <span className="text-ares-cyan">{targetObj.instruments.join(', ')}</span></div>
+            {targetObj.instruments && (
+              <div><span className="text-ares-text-muted">Instruments:</span> <span className="text-ares-cyan">{targetObj.instruments.join(', ')}</span></div>
+            )}
           </div>
         </div>
       )}
@@ -214,7 +237,24 @@ export default function DestinationInspector({
           <span>Set As Target</span>
         </button>
       </div>
+
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        <button
+          onClick={() => onOpenAddPOI && onOpenAddPOI(coordinates)}
+          className="px-3 py-2 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-xs font-mono font-medium text-purple-300 transition-all flex items-center justify-center space-x-1.5"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Log Waypoint Here</span>
+        </button>
+
+        <button
+          onClick={() => onPlanUnchartedTraverse && onPlanUnchartedTraverse(coordinates)}
+          className="px-3 py-2 rounded-lg bg-ares-accent/20 hover:bg-ares-accent/30 border border-ares-accent/40 text-xs font-mono font-medium text-ares-accent transition-all flex items-center justify-center space-x-1.5"
+        >
+          <Crosshair className="w-3.5 h-3.5" />
+          <span>Plan Traverse Here</span>
+        </button>
+      </div>
     </div>
   );
 }
-

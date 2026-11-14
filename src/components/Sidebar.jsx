@@ -7,7 +7,9 @@ import {
   MapPin, 
   ChevronLeft, 
   ChevronRight,
-  Layers
+  Layers,
+  X,
+  Plus
 } from 'lucide-react';
 import DestinationInspector from './DestinationInspector';
 import RoutePlanner from './RoutePlanner';
@@ -39,7 +41,14 @@ export default function Sidebar({
   onResetRoute,
   activeMissionId,
   onSelectMission,
-  onLoadAndPlanMission
+  onLoadAndPlanMission,
+  userPOIs = [],
+  onOpenAddPOI,
+  onDeleteUserPOI,
+  customMissions = [],
+  onOpenCreateMission,
+  onDeleteCustomMission,
+  onPlanUnchartedTraverse
 }) {
   const tabs = [
     { id: 'inspector', label: 'Inspector', icon: <MapPin className="w-4 h-4" /> },
@@ -51,94 +60,102 @@ export default function Sidebar({
 
   return (
     <div
-      className={`relative h-full bg-ares-surface border-l border-ares-border flex flex-col z-20 shadow-panel transition-all duration-300 ${
-        isCollapsed ? 'w-12' : 'w-full sm:w-[420px] md:w-[440px] lg:w-[480px]'
+      className={`absolute top-20 left-3 bottom-12 z-20 flex flex-col transition-all duration-300 pointer-events-auto ${
+        isCollapsed ? 'w-12' : 'w-[calc(100vw-1.5rem)] sm:w-[420px] md:w-[450px]'
       }`}
     >
-      <button
-        onClick={onToggleCollapse}
-        className="absolute -left-3 top-1/2 -translate-y-1/2 z-30 w-6 h-12 rounded-l-md bg-ares-surface border border-r-0 border-ares-border flex items-center justify-center text-ares-text-muted hover:text-ares-accent transition-colors shadow-panel"
-        title={isCollapsed ? 'Expand Panel' : 'Collapse Panel'}
-      >
-        {isCollapsed ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-      </button>
+      <div className="relative h-full bg-ares-surface/95 backdrop-blur-md border border-ares-border rounded-2xl shadow-panel flex flex-col overflow-hidden">
+        <button
+          onClick={onToggleCollapse}
+          className="absolute -right-3 top-1/2 -translate-y-1/2 z-30 w-6 h-12 rounded-r-md bg-ares-surface border border-l-0 border-ares-border flex items-center justify-center text-ares-text-muted hover:text-ares-accent transition-colors shadow-panel"
+          title={isCollapsed ? 'Expand Panel' : 'Collapse Panel'}
+        >
+          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        </button>
 
-      <div className="h-12 border-b border-ares-border bg-ares-surface-alt/70 flex items-center px-2 select-none overflow-x-auto no-scrollbar">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => {
-                if (isCollapsed) onToggleCollapse();
-                onSelectTab(tab.id);
-              }}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all shrink-0 ${
-                isActive
-                  ? 'bg-ares-accent text-ares-bg font-bold shadow-glow-accent'
-                  : 'text-ares-text-muted hover:text-ares-text hover:bg-ares-surface-alt'
-              }`}
-            >
-              {tab.icon}
-              {!isCollapsed && <span>{tab.label}</span>}
-            </button>
-          );
-        })}
-      </div>
-
-      {!isCollapsed && (
-        <div className="flex-1 overflow-hidden relative">
-          {activeTab === 'inspector' && (
-            <DestinationInspector
-              inspectionData={inspectionData}
-              onSetAsStart={onSetAsStart}
-              onSetAsDest={onSetAsDest}
-              onCenterMap={onCenterMap}
-              onSelectPOI={onSelectPOI}
-            />
-          )}
-
-          {activeTab === 'planner' && (
-            <RoutePlanner
-              startCoord={startCoord}
-              destCoord={destCoord}
-              onSelectStart={onSelectStart}
-              onSelectDest={onSelectDest}
-              selectedProfileId={selectedProfileId}
-              onSelectProfile={onSelectProfile}
-              onCalculateRoute={onCalculateRoute}
-              isCalculating={isCalculating}
-              plannedRoute={plannedRoute}
-              routeScore={routeScore}
-              onResetRoute={onResetRoute}
-            />
-          )}
-
-          {activeTab === 'comparison' && (
-            <RouteComparison
-              allRoutes={allRoutes}
-              activeProfileId={selectedProfileId}
-              onSelectProfile={onSelectProfile}
-            />
-          )}
-
-          {activeTab === 'profile' && (
-            <ElevationProfile
-              plannedRoute={plannedRoute}
-            />
-          )}
-
-          {activeTab === 'missions' && (
-            <MissionPanel
-              activeMissionId={activeMissionId}
-              onSelectMission={onSelectMission}
-              onLoadAndPlanMission={onLoadAndPlanMission}
-              isCalculating={isCalculating}
-            />
-          )}
+        <div className="h-12 border-b border-ares-border bg-ares-surface-alt/70 flex items-center px-2 select-none overflow-x-auto no-scrollbar">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  if (isCollapsed) onToggleCollapse();
+                  onSelectTab(tab.id);
+                }}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all shrink-0 ${
+                  isActive
+                    ? 'bg-ares-accent text-ares-bg font-bold shadow-glow-accent'
+                    : 'text-ares-text-muted hover:text-ares-text hover:bg-ares-surface-alt'
+                }`}
+              >
+                {tab.icon}
+                {!isCollapsed && <span>{tab.label}</span>}
+              </button>
+            );
+          })}
         </div>
-      )}
+
+        {!isCollapsed && (
+          <div className="flex-1 overflow-hidden relative">
+            {activeTab === 'inspector' && (
+              <DestinationInspector
+                inspectionData={inspectionData}
+                onSetAsStart={onSetAsStart}
+                onSetAsDest={onSetAsDest}
+                onCenterMap={onCenterMap}
+                onSelectPOI={onSelectPOI}
+                onOpenAddPOI={onOpenAddPOI}
+                onDeleteUserPOI={onDeleteUserPOI}
+                onPlanUnchartedTraverse={onPlanUnchartedTraverse}
+              />
+            )}
+
+            {activeTab === 'planner' && (
+              <RoutePlanner
+                startCoord={startCoord}
+                destCoord={destCoord}
+                onSelectStart={onSelectStart}
+                onSelectDest={onSelectDest}
+                selectedProfileId={selectedProfileId}
+                onSelectProfile={onSelectProfile}
+                onCalculateRoute={onCalculateRoute}
+                isCalculating={isCalculating}
+                plannedRoute={plannedRoute}
+                routeScore={routeScore}
+                onResetRoute={onResetRoute}
+                userPOIs={userPOIs}
+              />
+            )}
+
+            {activeTab === 'comparison' && (
+              <RouteComparison
+                allRoutes={allRoutes}
+                activeProfileId={selectedProfileId}
+                onSelectProfile={onSelectProfile}
+              />
+            )}
+
+            {activeTab === 'profile' && (
+              <ElevationProfile
+                plannedRoute={plannedRoute}
+              />
+            )}
+
+            {activeTab === 'missions' && (
+              <MissionPanel
+                activeMissionId={activeMissionId}
+                onSelectMission={onSelectMission}
+                onLoadAndPlanMission={onLoadAndPlanMission}
+                isCalculating={isCalculating}
+                customMissions={customMissions}
+                onOpenCreateMission={onOpenCreateMission}
+                onDeleteCustomMission={onDeleteCustomMission}
+              />
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
-

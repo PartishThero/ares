@@ -1,110 +1,244 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Compass, 
-  Clock, 
-  FileText, 
-  Activity, 
+  Search, 
   MapPin, 
-  Radio
+  Navigation, 
+  Compass, 
+  Layers, 
+  Activity, 
+  FileText, 
+  Plus, 
+  Crosshair, 
+  Clock, 
+  Radio, 
+  ChevronDown,
+  X,
+  ExternalLink,
+  Home
 } from 'lucide-react';
-import { getMarsSolTime } from '../utils/coordinates.js';
+import { SCIENTIFIC_TARGETS } from '../data/scientificTargets.js';
 
-export default function Header({ 
-  onResetView, 
-  onOpenReport, 
-  onOpenRadiation, 
-  activeMission
+export default function Header({
+  allTargets = [],
+  onSelectTarget,
+  marsTime,
+  liveTelemetry,
+  onOpenReport,
+  onOpenRadiation,
+  onResetView,
+  onOpenAddPOI,
+  onToggleUnchartedMode,
+  interactionMode = 'default',
+  onOpenDirections,
+  onToggleLandingPage,
+  isLandingPage = false
 }) {
-  const [marsTime, setMarsTime] = useState(getMarsSolTime());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const searchContainerRef = useRef(null);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setMarsTime(getMarsSolTime());
-    }, 1000);
-    return () => clearInterval(timer);
+    const handleClickOutside = (e) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const filteredTargets = allTargets.filter((t) => {
+    const matchesQuery = t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.category.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchesQuery) return false;
+    if (activeFilter === 'landmarks') return t.tier === 1;
+    if (activeFilter === 'user') return t.isUserCreated;
+    if (activeFilter === 'science') return t.category.includes('Formation') || t.category.includes('Stratigraphic') || t.category.includes('Lakebed');
+    if (activeFilter === 'drills') return t.category.includes('Drill');
+    return true;
+  });
+
   return (
-    <header className="h-16 bg-ares-surface border-b border-ares-border px-4 flex items-center justify-between select-none relative z-20 shadow-panel">
-      <div className="flex items-center space-x-3">
-        <div className="flex items-center space-x-2.5">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-ares-accent to-ares-accent-soft p-0.5 flex items-center justify-center shadow-glow-accent">
-            <div className="w-full h-full bg-ares-bg rounded-[7px] flex items-center justify-center">
-              <span className="font-mono font-black text-ares-accent text-lg tracking-wider">A</span>
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="font-bold text-lg tracking-wider text-ares-text leading-tight">ARES</h1>
-              <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-ares-accent/20 text-ares-accent border border-ares-accent/30 uppercase tracking-wider">
-                v2.6 Mars
-              </span>
-            </div>
-            <p className="text-[11px] text-ares-text-muted hidden sm:block">
-              Autonomous Route Exploration System • NASA Space Apps
-            </p>
+    <header className="absolute top-3 left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-2.5 pointer-events-none select-none">
+      <div 
+        ref={searchContainerRef}
+        className="pointer-events-auto flex items-center gap-2 bg-ares-surface/95 backdrop-blur-md border border-ares-border rounded-2xl shadow-panel px-3 py-1.5 transition-all w-full sm:w-[420px] md:w-[460px] relative"
+      >
+        <div className="flex items-center space-x-2 shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-ares-accent to-ares-accent-soft p-0.5 flex items-center justify-center shadow-glow-accent">
+            <span className="font-mono font-black text-ares-bg text-xs">A</span>
           </div>
         </div>
 
-        <div className="h-7 w-[1px] bg-ares-border mx-2 hidden md:block" />
-        <div className="hidden lg:flex items-center space-x-2 bg-ares-bg/80 border border-ares-border px-3 py-1.5 rounded-md">
-          <MapPin className="w-3.5 h-3.5 text-ares-accent" />
-          <span className="text-xs font-mono text-ares-text font-medium">Gale Crater — Mount Sharp</span>
-          <span className="text-[10px] font-mono text-ares-text-muted">(4.6°S, 137.4°E)</span>
+        <div className="relative flex-1 flex items-center">
+          <Search className="w-3.5 h-3.5 text-ares-text-muted absolute left-2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onFocus={() => setIsSearchOpen(true)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setIsSearchOpen(true);
+            }}
+            placeholder="Search craters, ridges, drill sites..."
+            className="w-full bg-ares-bg/80 border border-ares-border/70 rounded-xl pl-7 pr-7 py-1.5 text-xs text-ares-text font-mono placeholder:text-ares-text-muted/60 focus:outline-none focus:border-ares-accent"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setIsSearchOpen(false);
+              }}
+              className="absolute right-2 text-ares-text-muted hover:text-white"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
-      </div>
 
-      <div className="hidden md:flex items-center space-x-4 bg-ares-bg/90 border border-ares-border/80 px-4 py-1.5 rounded-lg">
-        <div className="flex items-center space-x-2">
-          <Clock className="w-3.5 h-3.5 text-ares-cyan animate-pulse" />
-          <span className="text-xs font-mono font-semibold text-ares-cyan tracking-wide">
-            SOL {marsTime.sol}
-          </span>
-        </div>
-        <span className="text-ares-border">|</span>
-        <div className="text-xs font-mono text-ares-text font-medium">
-          {marsTime.ltst}
-        </div>
-        <span className="text-ares-border">|</span>
-        <div className="text-[11px] font-mono text-ares-text-muted hidden xl:inline">
-          Ls {marsTime.solarLongitudeLs}
-        </div>
-      </div>
+        <div className="flex items-center space-x-1 shrink-0">
+          <button
+            onClick={onOpenDirections}
+            className="p-1.5 rounded-lg bg-ares-surface-alt hover:bg-ares-border border border-ares-border text-ares-accent hover:text-white transition-colors"
+            title="Directions / Route Planner"
+          >
+            <Navigation className="w-4 h-4" />
+          </button>
 
-      <div className="flex items-center space-x-2.5">
-        {activeMission && (
-          <div className="hidden sm:flex items-center space-x-2 px-2.5 py-1 rounded-md bg-ares-surface-alt border border-ares-border text-xs">
-            <Radio className="w-3 h-3 text-ares-success animate-pulse" />
-            <span className="font-mono text-[11px] text-ares-success font-medium">
-              {activeMission.code}
-            </span>
+          <button
+            onClick={onToggleUnchartedMode}
+            className={`p-1.5 rounded-lg border transition-all ${
+              interactionMode === 'explore_uncharted'
+                ? 'bg-ares-accent text-ares-bg border-ares-accent animate-pulse font-bold'
+                : 'bg-ares-surface-alt hover:bg-ares-border border-ares-border text-ares-text-muted hover:text-ares-accent'
+            }`}
+            title="Explore Uncharted Sector (Click anywhere on terrain to compute traverse)"
+          >
+            <Crosshair className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => onOpenAddPOI && onOpenAddPOI()}
+            className="p-1.5 rounded-lg bg-ares-surface-alt hover:bg-ares-border border border-ares-border text-purple-400 hover:text-purple-300 transition-colors"
+            title="Add Custom Astronaut Waypoint"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+
+        {isSearchOpen && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-ares-surface border border-ares-border rounded-xl shadow-panel overflow-hidden z-40 max-h-80 flex flex-col">
+            <div className="px-3 py-2 bg-ares-surface-alt/70 border-b border-ares-border flex items-center space-x-1.5 overflow-x-auto no-scrollbar text-[10px] font-mono">
+              <button
+                onClick={() => setActiveFilter('all')}
+                className={`px-2 py-0.5 rounded-md transition-colors shrink-0 ${activeFilter === 'all' ? 'bg-ares-accent text-ares-bg font-bold' : 'text-ares-text-muted hover:text-ares-text'}`}
+              >
+                All ({allTargets.length})
+              </button>
+              <button
+                onClick={() => setActiveFilter('landmarks')}
+                className={`px-2 py-0.5 rounded-md transition-colors shrink-0 ${activeFilter === 'landmarks' ? 'bg-ares-accent text-ares-bg font-bold' : 'text-ares-text-muted hover:text-ares-text'}`}
+              >
+                Landmarks
+              </button>
+              <button
+                onClick={() => setActiveFilter('science')}
+                className={`px-2 py-0.5 rounded-md transition-colors shrink-0 ${activeFilter === 'science' ? 'bg-ares-accent text-ares-bg font-bold' : 'text-ares-text-muted hover:text-ares-text'}`}
+              >
+                Science Formations
+              </button>
+              <button
+                onClick={() => setActiveFilter('drills')}
+                className={`px-2 py-0.5 rounded-md transition-colors shrink-0 ${activeFilter === 'drills' ? 'bg-ares-accent text-ares-bg font-bold' : 'text-ares-text-muted hover:text-ares-text'}`}
+              >
+                Drill Samples
+              </button>
+              <button
+                onClick={() => setActiveFilter('user')}
+                className={`px-2 py-0.5 rounded-md transition-colors shrink-0 ${activeFilter === 'user' ? 'bg-ares-accent text-ares-bg font-bold' : 'text-ares-text-muted hover:text-ares-text'}`}
+              >
+                My Waypoints
+              </button>
+            </div>
+
+            <div className="overflow-y-auto divide-y divide-ares-border/50">
+              {filteredTargets.length === 0 ? (
+                <div className="p-4 text-center text-xs text-ares-text-muted font-mono">
+                  No features match "{searchQuery}"
+                </div>
+              ) : (
+                filteredTargets.map((target) => (
+                  <div
+                    key={target.id}
+                    onClick={() => {
+                      onSelectTarget(target);
+                      setIsSearchOpen(false);
+                      setSearchQuery('');
+                    }}
+                    className="p-2.5 px-3 hover:bg-ares-surface-alt flex items-center justify-between cursor-pointer transition-colors"
+                  >
+                    <div className="truncate">
+                      <div className="text-xs font-semibold text-ares-text flex items-center gap-1.5 truncate">
+                        <MapPin className={`w-3 h-3 shrink-0 ${target.isUserCreated ? 'text-purple-400' : target.tier === 1 ? 'text-ares-accent' : 'text-ares-cyan'}`} />
+                        <span className="truncate">{target.name}</span>
+                      </div>
+                      <div className="text-[10px] text-ares-text-muted font-mono truncate pl-4.5">
+                        {target.category} • {target.elevation.toLocaleString()} m (MOLA)
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono text-ares-cyan shrink-0 ml-2">
+                      Jump →
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
+      </div>
+
+      <div className="pointer-events-auto flex items-center space-x-2">
+        <div className="hidden lg:flex items-center space-x-3 bg-ares-surface/90 backdrop-blur-md border border-ares-border px-3.5 py-1.5 rounded-2xl text-xs font-mono shadow-panel">
+          <div className="flex items-center space-x-1.5 text-ares-cyan font-semibold">
+            <Clock className="w-3.5 h-3.5 animate-pulse" />
+            <span>SOL {marsTime.sol}</span>
+          </div>
+          <span className="text-ares-border">|</span>
+          <span className="text-ares-text">{marsTime.ltst}</span>
+          <span className="text-ares-border">|</span>
+          <div className="flex items-center space-x-1 text-ares-warning font-semibold">
+            <Activity className="w-3 h-3" />
+            <span>{liveTelemetry?.radiationRateUsvPerHour || 27.1} μSv/h</span>
+          </div>
+        </div>
 
         <button
           onClick={onOpenRadiation}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-ares-surface-alt hover:bg-ares-border border border-ares-border text-xs text-ares-text transition-all hover:border-ares-warning/60 hover:text-ares-warning"
-          title="Open Curiosity RAD Historical Dosimetry Panel"
+          className="px-3 py-2 rounded-xl bg-ares-surface/90 backdrop-blur-md hover:bg-ares-surface-alt border border-ares-border text-xs text-ares-text transition-all hover:border-ares-warning/60 hover:text-ares-warning font-mono shadow-panel flex items-center space-x-1.5"
+          title="MSL RAD In-Situ Dosimetry"
         >
           <Activity className="w-3.5 h-3.5 text-ares-warning" />
-          <span className="hidden sm:inline font-mono font-medium">RAD Dosimetry</span>
+          <span className="hidden sm:inline font-medium">RAD Dosimetry</span>
         </button>
 
         <button
           onClick={onOpenReport}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-gradient-to-r from-ares-accent to-ares-accent-soft hover:opacity-95 text-xs text-ares-bg font-bold tracking-wide transition-all shadow-glow-accent"
-          title="Generate Marswalk Mission Briefing Report"
+          className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-ares-accent to-ares-accent-soft hover:opacity-95 text-xs text-ares-bg font-bold font-mono tracking-wide transition-all shadow-glow-accent flex items-center space-x-1.5"
+          title="Marswalk EVA Mission Briefing Directive"
         >
           <FileText className="w-3.5 h-3.5" />
-          <span>Mission Briefing</span>
+          <span className="hidden sm:inline">Briefing</span>
         </button>
 
         <button
-          onClick={onResetView}
-          className="p-1.5 rounded-md bg-ares-surface-alt hover:bg-ares-border border border-ares-border text-ares-text-muted hover:text-ares-text transition-colors"
-          title="Recenter Map on Gale Crater"
+          onClick={onToggleLandingPage}
+          className="px-3 py-2 rounded-xl bg-ares-surface/90 backdrop-blur-md hover:bg-ares-surface-alt border border-ares-border text-xs text-ares-text-muted hover:text-white transition-colors font-mono shadow-panel flex items-center space-x-1.5"
+          title="Switch to Landing Overview"
         >
-          <Compass className="w-4 h-4" />
+          <Home className="w-3.5 h-3.5" />
+          <span className="hidden md:inline font-medium">Overview</span>
         </button>
       </div>
     </header>
