@@ -1,5 +1,4 @@
-import { NASA_MARS_TREK_TARGETS } from './nasaMarsTrek2000.js';
-
+// Curated Gale Crater Scientific Targets for high-resolution mission planning
 export const GALE_SCIENTIFIC_TARGETS = [
   {
     id: 'poi-aeolis-mons-summit',
@@ -451,17 +450,5 @@ export const GALE_SCIENTIFIC_TARGETS = [
   }
 ];
 
-// Deduplicate and combine high-detail Gale targets with full NASA Mars Trek nomenclature catalog (2,038 planetary features)
-const seenNames = new Set(GALE_SCIENTIFIC_TARGETS.map((t) => t.name.toLowerCase()));
-
-const uniqueTrekFeatures = (NASA_MARS_TREK_TARGETS || [])
-  .filter((tf) => !seenNames.has(tf.name.toLowerCase()))
-  .map((tf) => ({
-    ...tf,
-    priority: tf.tier === 1 ? 'Major Planetary Landmark' : tf.tier === 2 ? 'Prominent Regional Feature' : 'IAU Surface Target'
-  }));
-
-export const SCIENTIFIC_TARGETS = [
-  ...GALE_SCIENTIFIC_TARGETS,
-  ...uniqueTrekFeatures
-];
+// High-detail curated Gale Crater scientific targets
+export const SCIENTIFIC_TARGETS = GALE_SCIENTIFIC_TARGETS;

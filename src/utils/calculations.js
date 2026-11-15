@@ -1,11 +1,11 @@
 import { calculateMarsDistanceKm } from './coordinates.js';
-import { NASA_MARS_TREK_TARGETS } from '../data/nasaMarsTrek2000.js';
+import { MAJOR_PLANETARY_LANDMARKS } from '../data/majorLandmarks.js';
 
 let spatialFeatureIndex = null;
 function getSpatialFeatureIndex() {
   if (spatialFeatureIndex) return spatialFeatureIndex;
   spatialFeatureIndex = new Map();
-  for (const t of (NASA_MARS_TREK_TARGETS || [])) {
+  for (const t of (MAJOR_PLANETARY_LANDMARKS || [])) {
     const [lon, lat] = t.coordinates;
     const k = `${Math.floor(lon / 8)},${Math.floor(lat / 8)}`;
     if (!spatialFeatureIndex.has(k)) spatialFeatureIndex.set(k, []);

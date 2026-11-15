@@ -9,6 +9,8 @@ import Feature from 'ol/Feature.js';
 import Point from 'ol/geom/Point.js';
 import LineString from 'ol/geom/LineString.js';
 import Polygon from 'ol/geom/Polygon.js';
+import Cluster from 'ol/source/Cluster.js';
+import { createEmpty, extend } from 'ol/extent.js';
 import { Style, Stroke, Fill, Text, Circle as CircleStyle } from 'ol/style.js';
 import { createForProjection } from 'ol/tilegrid.js';
 import { get as getProjection } from 'ol/proj.js';
@@ -63,9 +65,31 @@ export default function MarsMap({
   const nasaTileLayerRef = useRef(null);
   const vectorSourceRef = useRef(new VectorSource());
   const routeSourceRef = useRef(new VectorSource());
+  const gazetteerSourceRef = useRef(new VectorSource());
+  const gazetteerClusterSourceRef = useRef(null);
+  const gazetteerLayerRef = useRef(null);
+  const activeAbortControllerRef = useRef(null);
+  const gazetteerCacheRef = useRef(new Map());
+  const lastQueryKeyRef = useRef('');
+  const currentZoomRef = useRef(11.5);
+
+  const showPOIsRef = useRef(showPOIs);
+  showPOIsRef.current = showPOIs;
+
+  const userPOIsRef = useRef(userPOIs);
+  userPOIsRef.current = userPOIs;
 
   const mapPickingModeRef = useRef(mapPickingMode);
   mapPickingModeRef.current = mapPickingMode;
+
+  const onSelectCoordinateRef = useRef(onSelectCoordinate);
+  onSelectCoordinateRef.current = onSelectCoordinate;
+
+  const interactionModeRef = useRef(interactionMode);
+  interactionModeRef.current = interactionMode;
+
+  const onPlanUnchartedTraverseRef = useRef(onPlanUnchartedTraverse);
+  onPlanUnchartedTraverseRef.current = onPlanUnchartedTraverse;
 
   const [cursorCoords, setCursorCoords] = useState([137.3880, -4.7310]);
   const [cursorElev, setCursorElev] = useState(-4120);
@@ -130,6 +154,79 @@ export default function MarsMap({
       zIndex: 10
     });
 
+    // USGS Planetary Nomenclature Gazetteer Layer with Clustering
+    const gazetteerSource = gazetteerSourceRef.current;
+    const gazetteerClusterSource = new Cluster({
+      distance: 36,
+      minDistance: 20,
+      source: gazetteerSource
+    });
+    gazetteerClusterSourceRef.current = gazetteerClusterSource;
+
+    const gazetteerLayer = new VectorLayer({
+      source: gazetteerClusterSource,
+      zIndex: 15,
+      style: (feature) => {
+        const features = feature.get('features');
+        if (!features || features.length === 0) return null;
+        const zoom = currentZoomRef.current;
+
+        // Individual pin when single feature or zoomed in close (zoom >= 9.2)
+        if (features.length === 1 || zoom >= 9.2) {
+          const single = features[0];
+          const target = single.get('targetData');
+          if (!target) return null;
+
+          const isTier1 = target.tier === 1;
+          const isUser = target.isUserCreated;
+          const isLandingSite = target.category === 'Landing Site' || (target.name || '').toLowerCase().includes('landing');
+
+          let pinColor = '#38bdf8';
+          if (isUser) pinColor = '#a855f7';
+          else if (isLandingSite) pinColor = '#fbbf24';
+          else if (isTier1) pinColor = '#c47b50';
+          else if (target.category?.includes('Mons') || target.category?.includes('Peak')) pinColor = '#38bdf8';
+          else if (target.category?.includes('Drill')) pinColor = '#91a68b';
+          else if (target.category?.includes('Channel') || target.category?.includes('Vallis')) pinColor = '#34d399';
+          else pinColor = '#cbd5e1';
+
+          const showLabel = isTier1 || isUser || isLandingSite || zoom >= 10.5;
+
+          return new Style({
+            image: new CircleStyle({
+              radius: isUser ? 6 : isLandingSite ? 6 : isTier1 ? 5 : 3.5,
+              fill: new Fill({ color: pinColor }),
+              stroke: new Stroke({ color: '#ffffff', width: isUser || isLandingSite ? 2 : 1.2 })
+            }),
+            text: showLabel ? new Text({
+              text: target.name,
+              font: `${isTier1 || isLandingSite ? '600 10px' : '500 9px'} "JetBrains Mono", monospace`,
+              fill: new Fill({ color: isUser ? '#d8b4fe' : isLandingSite ? '#fef08a' : '#e8e4dc' }),
+              stroke: new Stroke({ color: '#17191c', width: 3 }),
+              offsetY: isTier1 || isLandingSite ? -12 : -9
+            }) : undefined
+          });
+        }
+
+        // Clustered bubble for lower zoom levels
+        const size = features.length;
+        return new Style({
+          image: new CircleStyle({
+            radius: Math.min(22, 10 + Math.log2(size) * 3.2),
+            fill: new Fill({ color: 'rgba(196, 123, 80, 0.90)' }),
+            stroke: new Stroke({ color: '#ffffff', width: 1.8 })
+          }),
+          text: new Text({
+            text: size.toString(),
+            font: 'bold 10px "JetBrains Mono", monospace',
+            fill: new Fill({ color: '#ffffff' }),
+            offsetY: 1
+          })
+        });
+      }
+    });
+    gazetteerLayerRef.current = gazetteerLayer;
+
     const routeLayer = new VectorLayer({
       source: routeSourceRef.current,
       zIndex: 20
@@ -146,12 +243,112 @@ export default function MarsMap({
 
     const map = new Map({
       target: mapElement.current,
-      layers: [baseProceduralLayer, nasaTileLayer, vectorLayer, routeLayer],
+      layers: [baseProceduralLayer, nasaTileLayer, vectorLayer, gazetteerLayer, routeLayer],
       view,
       controls: []
     });
 
     mapRef.current = map;
+
+    // Load USGS features based on visible extent with spatial buffer and caching
+    const loadVisibleGazetteer = async () => {
+      if (!mapRef.current) return;
+      if (!showPOIsRef.current) {
+        gazetteerSourceRef.current.clear();
+        return;
+      }
+
+      const m = mapRef.current;
+      const size = m.getSize();
+      if (!size) return;
+      const extent = m.getView().calculateExtent(size);
+      const zoom = m.getView().getZoom() || 11.5;
+      currentZoomRef.current = zoom;
+
+      const [minX, minY, maxX, maxY] = extent;
+      const padX = Math.max(0.1, (maxX - minX) * 0.25);
+      const padY = Math.max(0.1, (maxY - minY) * 0.25);
+      const pMinLon = Math.max(-180, minX - padX);
+      const pMaxLon = Math.min(180, maxX + padX);
+      const pMinLat = Math.max(-90, minY - padY);
+      const pMaxLat = Math.min(90, maxY + padY);
+
+      const maxTier = zoom < 5.0 ? 1 : zoom < 8.0 ? 2 : 3;
+
+      const queryKey = `${pMinLon.toFixed(2)},${pMinLat.toFixed(2)},${pMaxLon.toFixed(2)},${pMaxLat.toFixed(2)}_${maxTier}`;
+      if (lastQueryKeyRef.current === queryKey) return;
+      lastQueryKeyRef.current = queryKey;
+
+      if (activeAbortControllerRef.current) {
+        activeAbortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      activeAbortControllerRef.current = controller;
+
+      try {
+        const url = `/api/features?bbox=${pMinLon.toFixed(3)},${pMinLat.toFixed(3)},${pMaxLon.toFixed(3)},${pMaxLat.toFixed(3)}&tier=${maxTier}&limit=400`;
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data || !Array.isArray(data.features)) return;
+
+        data.features.forEach((f) => {
+          gazetteerCacheRef.current.set(f.id, f);
+        });
+
+        // Curated Gale Crater targets and user-created POIs within extent
+        const allLocalTargets = [...SCIENTIFIC_TARGETS, ...(userPOIsRef.current || [])];
+        const localFeaturesWithinExtent = allLocalTargets.filter((t) => {
+          const [lon, lat] = t.coordinates;
+          return lon >= pMinLon && lon <= pMaxLon && lat >= pMinLat && lat <= pMaxLat;
+        });
+
+        const seenNames = new Set(localFeaturesWithinExtent.map((t) => (t.name || '').toLowerCase()));
+        const olFeatures = [];
+
+        localFeaturesWithinExtent.forEach((target) => {
+          const olFeat = new Feature({
+            geometry: new Point(target.coordinates),
+            name: target.name,
+            targetData: target,
+            type: target.isUserCreated ? 'user_poi' : 'scientific_target'
+          });
+          olFeatures.push(olFeat);
+        });
+
+        data.features.forEach((f) => {
+          const name = f.properties.name || f.properties.clean_name;
+          if (seenNames.has((name || '').toLowerCase())) return;
+          seenNames.add((name || '').toLowerCase());
+
+          const targetData = {
+            id: f.properties.usgs_id || `usgs-${f.id}`,
+            name,
+            category: f.properties.category || f.properties.type,
+            coordinates: f.geometry.coordinates,
+            tier: f.properties.tier,
+            diameter: f.properties.diameter_km,
+            origin: f.properties.origin,
+            link: f.properties.link,
+            quadName: f.properties.quad_name
+          };
+
+          const olFeat = new Feature({
+            geometry: new Point(f.geometry.coordinates),
+            name,
+            targetData,
+            type: 'usgs_feature'
+          });
+          olFeatures.push(olFeat);
+        });
+
+        gazetteerSourceRef.current.clear();
+        gazetteerSourceRef.current.addFeatures(olFeatures);
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('USGS Gazetteer fetch error:', err);
+      }
+    };
 
     view.on('change:rotation', () => {
       const rot = view.getRotation();
@@ -162,11 +359,37 @@ export default function MarsMap({
     view.on('change:resolution', () => {
       const z = view.getZoom() || 11.5;
       setCurrentZoom(z);
+      currentZoomRef.current = z;
     });
+
+    map.on('moveend', () => {
+      loadVisibleGazetteer();
+    });
+
+    // Initial load of gazetteer features
+    loadVisibleGazetteer();
 
     map.on('singleclick', (evt) => {
       let clickedFeatureTarget = null;
       map.forEachFeatureAtPixel(evt.pixel, (feat) => {
+        // 1. Check if clicked a cluster of multiple points
+        const cluster = feat.get('features');
+        if (cluster && cluster.length > 1) {
+          const extent = createEmpty();
+          cluster.forEach((f) => extend(extent, f.getGeometry().getExtent()));
+          map.getView().fit(extent, { duration: 450, padding: [60, 60, 60, 60], maxZoom: 13 });
+          clickedFeatureTarget = 'CLUSTER_EXPANDED';
+          return true;
+        }
+        if (cluster && cluster.length === 1) {
+          const tData = cluster[0].get('targetData');
+          if (tData) {
+            clickedFeatureTarget = tData;
+            return true;
+          }
+        }
+
+        // 2. Individual feature
         const tData = feat.get('targetData');
         if (tData) {
           clickedFeatureTarget = tData;
@@ -174,16 +397,22 @@ export default function MarsMap({
         }
       });
 
+      if (clickedFeatureTarget === 'CLUSTER_EXPANDED') return;
+
       const currentPicking = mapPickingModeRef.current;
+      const currentInteractionMode = interactionModeRef.current;
+      const doPlanUncharted = onPlanUnchartedTraverseRef.current;
+      const doSelectCoordinate = onSelectCoordinateRef.current;
+
       if (clickedFeatureTarget) {
         if (currentPicking) {
-          onSelectCoordinate(clickedFeatureTarget.coordinates[0], clickedFeatureTarget.coordinates[1], currentPicking);
+          doSelectCoordinate?.(clickedFeatureTarget.coordinates[0], clickedFeatureTarget.coordinates[1], currentPicking);
           return;
         }
-        if (interactionMode === 'explore_uncharted' && onPlanUnchartedTraverse) {
-          onPlanUnchartedTraverse(clickedFeatureTarget.coordinates);
+        if (currentInteractionMode === 'explore_uncharted' && doPlanUncharted) {
+          doPlanUncharted(clickedFeatureTarget.coordinates);
         } else {
-          onSelectCoordinate(clickedFeatureTarget.coordinates[0], clickedFeatureTarget.coordinates[1]);
+          doSelectCoordinate?.(clickedFeatureTarget.coordinates[0], clickedFeatureTarget.coordinates[1]);
         }
         return;
       }
@@ -191,13 +420,13 @@ export default function MarsMap({
       const [lon, lat] = evt.coordinate;
       if (lon >= -180 && lon <= 180 && lat >= -90 && lat <= 90) {
         if (currentPicking) {
-          onSelectCoordinate(lon, lat, currentPicking);
+          doSelectCoordinate?.(lon, lat, currentPicking);
           return;
         }
-        if (interactionMode === 'explore_uncharted' && onPlanUnchartedTraverse) {
-          onPlanUnchartedTraverse([lon, lat]);
+        if (currentInteractionMode === 'explore_uncharted' && doPlanUncharted) {
+          doPlanUncharted([lon, lat]);
         } else {
-          onSelectCoordinate(lon, lat);
+          doSelectCoordinate?.(lon, lat);
         }
       }
     });

@@ -264,48 +264,56 @@ export default function RoutePlanner({
             <div className="flex-1 space-y-2.5">
               {/* Start Point Input Field */}
               <div ref={startContainerRef} className="relative">
-                <div className="flex items-center space-x-1.5 text-[10px] font-mono font-bold text-white/70 mb-1">
-                  <CircleDot className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="uppercase tracking-wider">Start Point</span>
+                <div className="flex items-center justify-between text-[10px] font-mono font-bold text-white/70 mb-1">
+                  <div className="flex items-center space-x-1.5">
+                    <CircleDot className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span className="uppercase tracking-wider">Start Point</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartDropdownOpen((prev) => !prev);
+                      setDestDropdownOpen(false);
+                    }}
+                    className="text-[10px] font-mono text-white/50 hover:text-white transition-colors cursor-pointer flex items-center space-x-1"
+                  >
+                    <span>Browse catalog</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${startDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
                 </div>
 
                 <div className="relative">
                   <input
                     type="text"
                     value={startInputText}
-                    placeholder="Click to choose from catalog or type coords..."
+                    placeholder="Click to pick on map or type coordinates..."
                     onClick={() => {
-                      setStartDropdownOpen(true);
-                      setDestDropdownOpen(false);
+                      onSetPickingMode?.('start');
                     }}
                     onFocus={() => {
                       setIsEditingStart(true);
-                      setStartDropdownOpen(true);
-                      setDestDropdownOpen(false);
+                      onSetPickingMode?.('start');
                     }}
                     onBlur={() => {
                       setIsEditingStart(false);
                     }}
                     onChange={(e) => handleStartInputChange(e.target.value)}
-                    className="w-full bg-ares-bg border border-ares-border hover:border-white/20 focus:border-[#ff7a30] rounded-xl px-3 py-2 text-xs font-mono text-ares-text placeholder:text-ares-text-muted/60 focus:outline-none transition-all truncate"
+                    className={`w-full bg-ares-bg border rounded-xl px-3 py-2 text-xs font-mono text-ares-text placeholder:text-ares-text-muted/60 focus:outline-none transition-all truncate ${
+                      mapPickingMode === 'start'
+                        ? 'border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)] ring-1 ring-emerald-500/50'
+                        : 'border-ares-border hover:border-white/20'
+                    }`}
                   />
+                  {mapPickingMode === 'start' && (
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-mono text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-1.5 py-0.5 rounded pointer-events-none">
+                      Aim map
+                    </span>
+                  )}
                 </div>
 
-                {/* Catalog Dropdown for Start (appears ONLY when clicked) */}
+                {/* Subtle Catalog Dropdown for Start (appears ONLY when Browse catalog is clicked) */}
                 {startDropdownOpen && (
                   <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-ares-surface/98 border border-ares-border/90 rounded-xl shadow-2xl p-2 space-y-2 backdrop-blur-xl max-h-56 overflow-y-auto">
-                    <div
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        onSetPickingMode?.('start');
-                        setStartDropdownOpen(false);
-                      }}
-                      className="px-2.5 py-1.5 rounded-lg bg-[#ff7a30]/10 hover:bg-[#ff7a30]/20 border border-[#ff7a30]/30 text-[#ff7a30] transition-colors cursor-pointer flex items-center space-x-2 text-xs font-mono font-medium"
-                    >
-                      <Crosshair className="w-3.5 h-3.5" />
-                      <span>Click on Map to Pick Start Point</span>
-                    </div>
-
                     <div className="relative">
                       <Search className="w-3 h-3 text-ares-text-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
                       <input
@@ -339,48 +347,56 @@ export default function RoutePlanner({
 
               {/* Destination Point Input Field */}
               <div ref={destContainerRef} className="relative">
-                <div className="flex items-center space-x-1.5 text-[10px] font-mono font-bold text-white/70 mb-1">
-                  <MapPin className="w-3.5 h-3.5 text-[#ff7a30] shrink-0" />
-                  <span className="uppercase tracking-wider">Destination Target</span>
+                <div className="flex items-center justify-between text-[10px] font-mono font-bold text-white/70 mb-1">
+                  <div className="flex items-center space-x-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#ff7a30] shrink-0" />
+                    <span className="uppercase tracking-wider">Destination Target</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDestDropdownOpen((prev) => !prev);
+                      setStartDropdownOpen(false);
+                    }}
+                    className="text-[10px] font-mono text-white/50 hover:text-white transition-colors cursor-pointer flex items-center space-x-1"
+                  >
+                    <span>Browse catalog</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${destDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
                 </div>
 
                 <div className="relative">
                   <input
                     type="text"
                     value={destInputText}
-                    placeholder="Click to choose from catalog or type coords..."
+                    placeholder="Click to pick on map or type coordinates..."
                     onClick={() => {
-                      setDestDropdownOpen(true);
-                      setStartDropdownOpen(false);
+                      onSetPickingMode?.('dest');
                     }}
                     onFocus={() => {
                       setIsEditingDest(true);
-                      setDestDropdownOpen(true);
-                      setStartDropdownOpen(false);
+                      onSetPickingMode?.('dest');
                     }}
                     onBlur={() => {
                       setIsEditingDest(false);
                     }}
                     onChange={(e) => handleDestInputChange(e.target.value)}
-                    className="w-full bg-ares-bg border border-ares-border hover:border-white/20 focus:border-[#ff7a30] rounded-xl px-3 py-2 text-xs font-mono text-ares-text placeholder:text-ares-text-muted/60 focus:outline-none transition-all truncate"
+                    className={`w-full bg-ares-bg border rounded-xl px-3 py-2 text-xs font-mono text-ares-text placeholder:text-ares-text-muted/60 focus:outline-none transition-all truncate ${
+                      mapPickingMode === 'dest'
+                        ? 'border-[#ff7a30] shadow-[0_0_12px_rgba(255,122,48,0.3)] ring-1 ring-[#ff7a30]/50'
+                        : 'border-ares-border hover:border-white/20'
+                    }`}
                   />
+                  {mapPickingMode === 'dest' && (
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-mono text-[#ff7a30] bg-[#ff7a30]/10 border border-[#ff7a30]/40 px-1.5 py-0.5 rounded pointer-events-none">
+                      Aim map
+                    </span>
+                  )}
                 </div>
 
-                {/* Catalog Dropdown for Destination (appears ONLY when clicked) */}
+                {/* Subtle Catalog Dropdown for Destination (appears ONLY when Browse catalog is clicked) */}
                 {destDropdownOpen && (
                   <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-ares-surface/98 border border-ares-border/90 rounded-xl shadow-2xl p-2 space-y-2 backdrop-blur-xl max-h-56 overflow-y-auto">
-                    <div
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        onSetPickingMode?.('dest');
-                        setDestDropdownOpen(false);
-                      }}
-                      className="px-2.5 py-1.5 rounded-lg bg-[#ff7a30]/10 hover:bg-[#ff7a30]/20 border border-[#ff7a30]/30 text-[#ff7a30] transition-colors cursor-pointer flex items-center space-x-2 text-xs font-mono font-medium"
-                    >
-                      <Crosshair className="w-3.5 h-3.5" />
-                      <span>Click on Map to Pick Destination</span>
-                    </div>
-
                     <div className="relative">
                       <Search className="w-3 h-3 text-ares-text-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
                       <input

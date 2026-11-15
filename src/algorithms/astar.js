@@ -320,6 +320,11 @@ function smoothTraverseCoordinates(rawNodes) {
   }
   smoothCoords.push([rawNodes[rawNodes.length - 1].lon, rawNodes[rawNodes.length - 1].lat]);
 
+  if (smoothCoords.length > 0) {
+    smoothCoords[0] = [rawNodes[0].lon, rawNodes[0].lat];
+    smoothCoords[smoothCoords.length - 1] = [rawNodes[rawNodes.length - 1].lon, rawNodes[rawNodes.length - 1].lat];
+  }
+
   return smoothCoords;
 }
 

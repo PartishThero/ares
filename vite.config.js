@@ -1,9 +1,44 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { handleApiRequest } from './server/apiRouter.js';
+
+function usgsGazetteerApiPlugin() {
+  return {
+    name: 'usgs-gazetteer-api',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url && req.url.startsWith('/api/')) {
+          try {
+            const handled = handleApiRequest(req, res);
+            if (!handled) next();
+          } catch (err) {
+            next(err);
+          }
+        } else {
+          next();
+        }
+      });
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url && req.url.startsWith('/api/')) {
+          try {
+            const handled = handleApiRequest(req, res);
+            if (!handled) next();
+          } catch (err) {
+            next(err);
+          }
+        } else {
+          next();
+        }
+      });
+    }
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), usgsGazetteerApiPlugin()],
   build: {
     target: 'esnext',
     chunkSizeWarningLimit: 1000,

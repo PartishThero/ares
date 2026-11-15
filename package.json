@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "ingest": "node scripts/ingest_usgs.js",
+    "server": "node server/index.js"
   },
   "dependencies": {
     "@arcgis/core": "^5.2.4",

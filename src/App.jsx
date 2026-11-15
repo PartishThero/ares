@@ -126,9 +126,12 @@ export default function App() {
     }, 40);
   }, []);
 
+  // Automatically recalculate routes whenever start, dest, or profile changes!
   useEffect(() => {
-    calculateTraverseRoutes(startCoord, destCoord, 'safest', [[137.3820, -4.8920]]);
-  }, []);
+    if (startCoord && destCoord) {
+      calculateTraverseRoutes(startCoord, destCoord, selectedProfileId);
+    }
+  }, [startCoord, destCoord, selectedProfileId, calculateTraverseRoutes]);
 
   const handleSelectCoordinate = (lon, lat, explicitMode = null) => {
     const mode = explicitMode || mapPickingMode;
@@ -145,6 +148,13 @@ export default function App() {
     setSelectedCoord([lon, lat]);
     const data = inspectMarsLocation(lon, lat);
     setInspectionData(data);
+
+    // If user is currently in Route Planner tab, clicking terrain sets Destination Target without switching away
+    if (activeTab === 'planner') {
+      handleSetAsDest([lon, lat]);
+      return;
+    }
+
     setActiveTab('inspector');
     if (isSidebarCollapsed) setIsSidebarCollapsed(false);
   };
@@ -166,14 +176,13 @@ export default function App() {
     if (!destCoord) {
       setRoutePrompt({
         type: 'start_set',
-        message: '✓ Start location (EVA Base) set. Now click on the map to choose your destination target.'
+        message: '✓ Start location (EVA Base) set. Now choose your Destination Target.'
       });
     } else {
       setRoutePrompt({
         type: 'start_updated',
-        message: '✓ Start location updated. Both waypoints configured!'
+        message: '✓ Start location updated. Route recalculated!'
       });
-      calculateTraverseRoutes(coord, destCoord, selectedProfileId);
     }
   };
 
@@ -182,14 +191,13 @@ export default function App() {
     if (!startCoord) {
       setRoutePrompt({
         type: 'dest_set',
-        message: '✓ Destination target set. Now click on the map to choose your start location (EVA Base).'
+        message: '✓ Destination target set. Now choose your Start location (EVA Base).'
       });
     } else {
       setRoutePrompt({
         type: 'both_set',
-        message: '✓ Destination target locked! Both waypoints set. Ready for route planning.'
+        message: '✓ Destination target locked! Route corridor calculated.'
       });
-      calculateTraverseRoutes(startCoord, coord, selectedProfileId);
     }
   };
 
