@@ -590,16 +590,8 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
         </button>
       </div>
 
-      {/* Floating Basemap Switcher & Active Measurement Tool Dock (Bottom Right) */}
-      <div
-        className={`absolute right-6 z-20 pointer-events-auto flex items-center space-x-2 transition-all duration-300 ease-out ${
-          activeMeasureTool === 'elevation'
-            ? 'bottom-[345px]'
-            : activeMeasureTool
-              ? 'bottom-[245px]'
-              : 'bottom-6'
-        }`}
-      >
+      {/* Floating Basemap Switcher & Active Measurement Tool Dock (Bottom Left) */}
+      <div className="absolute bottom-6 left-6 z-20 pointer-events-auto flex items-center space-x-2 transition-all duration-300 ease-out">
         {/* Quick-Dismiss Badge for Active 3D Measurement Widget */}
         {activeMeasureTool && (
           <div className="flex items-center space-x-2 bg-ares-surface/95 backdrop-blur-md border border-ares-cyan/60 px-3 py-1.5 rounded-xl shadow-panel text-xs font-mono text-ares-cyan">
