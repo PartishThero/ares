@@ -50,7 +50,10 @@ export default function MarsMap({
   userPOIs = [],
   interactionMode = 'default',
   activeTab = 'inspector',
-  onPlanUnchartedTraverse
+  onPlanUnchartedTraverse,
+  mapPickingMode = null,
+  onCancelPicking,
+  mapCameraAction = null
 }) {
   const mapElement = useRef(null);
   const mapRef = useRef(null);
@@ -58,6 +61,9 @@ export default function MarsMap({
   const nasaTileLayerRef = useRef(null);
   const vectorSourceRef = useRef(new VectorSource());
   const routeSourceRef = useRef(new VectorSource());
+
+  const mapPickingModeRef = useRef(mapPickingMode);
+  mapPickingModeRef.current = mapPickingMode;
 
   const [cursorCoords, setCursorCoords] = useState([137.3880, -4.7310]);
   const [cursorElev, setCursorElev] = useState(-4120);
@@ -166,7 +172,12 @@ export default function MarsMap({
         }
       });
 
+      const currentPicking = mapPickingModeRef.current;
       if (clickedFeatureTarget) {
+        if (currentPicking) {
+          onSelectCoordinate(clickedFeatureTarget.coordinates[0], clickedFeatureTarget.coordinates[1], currentPicking);
+          return;
+        }
         if (interactionMode === 'explore_uncharted' && onPlanUnchartedTraverse) {
           onPlanUnchartedTraverse(clickedFeatureTarget.coordinates);
         } else {
@@ -177,6 +188,10 @@ export default function MarsMap({
 
       const [lon, lat] = evt.coordinate;
       if (lon >= -180 && lon <= 180 && lat >= -90 && lat <= 90) {
+        if (currentPicking) {
+          onSelectCoordinate(lon, lat, currentPicking);
+          return;
+        }
         if (interactionMode === 'explore_uncharted' && onPlanUnchartedTraverse) {
           onPlanUnchartedTraverse([lon, lat]);
         } else {
@@ -484,6 +499,33 @@ export default function MarsMap({
     });
   }, [panToCoord]);
 
+  useEffect(() => {
+    if (!mapCameraAction || !mapRef.current) return;
+    const view = mapRef.current.getView();
+    if (mapCameraAction.type === 'zoom_to_start' && mapCameraAction.coord) {
+      view.animate({
+        center: mapCameraAction.coord,
+        zoom: 12.5,
+        duration: 650
+      });
+    } else if (mapCameraAction.type === 'zoom_to_route' && mapCameraAction.startCoord && mapCameraAction.destCoord) {
+      const p1 = mapCameraAction.startCoord;
+      const p2 = mapCameraAction.destCoord;
+      const minLon = Math.min(p1[0], p2[0]);
+      const maxLon = Math.max(p1[0], p2[0]);
+      const minLat = Math.min(p1[1], p2[1]);
+      const maxLat = Math.max(p1[1], p2[1]);
+      const center = [(minLon + maxLon) / 2, (minLat + maxLat) / 2];
+      const span = Math.max(maxLon - minLon, maxLat - minLat);
+      const targetZoom = span > 0.8 ? 8.5 : span > 0.4 ? 9.5 : span > 0.15 ? 10.5 : 11.2;
+      view.animate({
+        center,
+        zoom: targetZoom,
+        duration: 750
+      });
+    }
+  }, [mapCameraAction]);
+
   const handleZoomIn = () => {
     if (!mapRef.current) return;
     const view = mapRef.current.getView();
@@ -526,7 +568,9 @@ export default function MarsMap({
 
   return (
     <div className={`relative w-full h-full bg-[#17191c] overflow-hidden select-none ${
-      interactionMode === 'explore_uncharted'
+      mapPickingMode
+        ? 'cursor-crosshair'
+        : interactionMode === 'explore_uncharted'
         ? 'cursor-crosshair'
         : activeTab === 'inspector'
         ? 'inspector-aim-mode'
@@ -534,8 +578,29 @@ export default function MarsMap({
     }`}>
       <div ref={mapElement} className="w-full h-full" />
 
+      {/* Map Picking Active Prompt Banner */}
+      {mapPickingMode && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-[#ff7a30] text-black font-mono text-xs font-bold shadow-glow-accent flex items-center space-x-2.5 pointer-events-auto border border-black/20 animate-pulse">
+          <Crosshair className="w-4 h-4 text-black" />
+          <span>
+            {mapPickingMode === 'start'
+              ? 'CLICK MAP TO SET START POINT (EVA BASE)'
+              : 'CLICK MAP TO SET DESTINATION TARGET'}
+          </span>
+          {onCancelPicking && (
+            <button
+              onClick={onCancelPicking}
+              className="ml-2 w-4 h-4 rounded-full bg-black/20 hover:bg-black/40 flex items-center justify-center text-xs text-black cursor-pointer font-bold"
+              title="Cancel map selection"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Tactical Inspector Reticle Active Prompt */}
-      {activeTab === 'inspector' && interactionMode !== 'explore_uncharted' && (
+      {!mapPickingMode && activeTab === 'inspector' && interactionMode !== 'explore_uncharted' && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-10 px-3.5 py-1.5 rounded-xl bg-ares-surface/85 backdrop-blur-md border border-ares-accent/40 text-xs font-mono shadow-panel flex items-center space-x-2 pointer-events-none">
           <Crosshair className="w-3.5 h-3.5 text-ares-accent animate-pulse" />
           <span className="text-ares-accent font-bold uppercase tracking-wider text-[11px]">Tactical Inspector:</span>

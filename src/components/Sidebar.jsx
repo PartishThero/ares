@@ -2,7 +2,6 @@ import React from 'react';
 import { 
   Compass, 
   Navigation, 
-  GitCompare, 
   Mountain, 
   MapPin, 
   ChevronLeft, 
@@ -13,7 +12,6 @@ import {
 } from 'lucide-react';
 import DestinationInspector from './DestinationInspector';
 import RoutePlanner from './RoutePlanner';
-import RouteComparison from './RouteComparison';
 import ElevationProfile from './ElevationProfile';
 import MissionPanel from './MissionPanel';
 
@@ -50,14 +48,17 @@ export default function Sidebar({
   customMissions = [],
   onOpenCreateMission,
   onDeleteCustomMission,
-  onPlanUnchartedTraverse
+  onPlanUnchartedTraverse,
+  mapPickingMode = null,
+  onSetPickingMode,
+  onFocusStart,
+  onFocusRoute
 }) {
   const tabs = [
-    { id: 'inspector', label: 'Inspector', icon: <MapPin className="w-4 h-4" /> },
     { id: 'planner', label: 'Route', icon: <Navigation className="w-4 h-4" /> },
     { id: 'profile', label: 'Elevation', icon: <Mountain className="w-4 h-4" /> },
+    { id: 'inspector', label: 'Inspector', icon: <MapPin className="w-4 h-4" /> },
     { id: 'missions', label: 'Missions', icon: <Compass className="w-4 h-4" /> },
-    { id: 'comparison', label: 'Compare', icon: <GitCompare className="w-4 h-4" /> },
   ];
 
   return (
@@ -133,14 +134,10 @@ export default function Sidebar({
                 routeScore={routeScore}
                 onResetRoute={onResetRoute}
                 userPOIs={userPOIs}
-              />
-            )}
-
-            {activeTab === 'comparison' && (
-              <RouteComparison
-                allRoutes={allRoutes}
-                activeProfileId={selectedProfileId}
-                onSelectProfile={onSelectProfile}
+                mapPickingMode={mapPickingMode}
+                onSetPickingMode={onSetPickingMode}
+                onFocusStart={onFocusStart}
+                onFocusRoute={onFocusRoute}
               />
             )}
 

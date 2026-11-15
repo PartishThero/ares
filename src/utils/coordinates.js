@@ -44,6 +44,41 @@ export function formatDecimalCoords(lon, lat, precision = 4) {
   return `${lat.toFixed(precision)}° Lat, ${lon.toFixed(precision)}° Lon`;
 }
 
+export function parseMarsCoords(input) {
+  if (!input || typeof input !== 'string') return null;
+  const str = input.trim();
+  if (!str) return null;
+
+  // Try matching cardinal directions: e.g. 4.6 S, 137.4 E or 4° 43' S, 137° 23' E
+  const latDirMatch = str.match(/([+-]?\d+(?:\.\d+)?)\s*(?:°|deg)?\s*([NS])/i);
+  const lonDirMatch = str.match(/([+-]?\d+(?:\.\d+)?)\s*(?:°|deg)?\s*([EW])/i);
+  if (latDirMatch && lonDirMatch) {
+    let lat = parseFloat(latDirMatch[1]);
+    if (latDirMatch[2].toUpperCase() === 'S') lat = -Math.abs(lat);
+    let lon = parseFloat(lonDirMatch[1]);
+    if (lonDirMatch[2].toUpperCase() === 'W') lon = -Math.abs(lon);
+    if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+      return [lon, lat];
+    }
+  }
+
+  // Match two floating point numbers: "lon, lat" or "lat, lon"
+  const numbers = str.match(/[+-]?\d+(?:\.\d+)?/g);
+  if (numbers && numbers.length >= 2) {
+    const n1 = parseFloat(numbers[0]);
+    const n2 = parseFloat(numbers[1]);
+    // For Gale Crater, lon is typically ~137, lat is ~ -4.7
+    if (Math.abs(n1) > 90 && Math.abs(n2) <= 90) {
+      return [n1, n2];
+    } else if (Math.abs(n2) > 90 && Math.abs(n1) <= 90) {
+      return [n2, n1];
+    } else if (n1 >= -180 && n1 <= 180 && n2 >= -90 && n2 <= 90) {
+      return [n1, n2];
+    }
+  }
+  return null;
+}
+
 export function getMarsSolTime(lon = 137.44) {
   // Curiosity landed on Sol 0 = August 6, 2012
   const landingEpochMs = 1344230400000;

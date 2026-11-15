@@ -64,6 +64,8 @@ export default function App() {
   const [isAddPOIOpen, setIsAddPOIOpen] = useState(false);
   const [addPOICoords, setAddPOICoords] = useState([137.3880, -4.7310]);
   const [interactionMode, setInteractionMode] = useState('default');
+  const [mapPickingMode, setMapPickingMode] = useState(null); // 'start' | 'dest' | null
+  const [mapCameraAction, setMapCameraAction] = useState(null);
 
   useEffect(() => {
     const clockTimer = setInterval(() => {
@@ -128,12 +130,31 @@ export default function App() {
     calculateTraverseRoutes(startCoord, destCoord, 'safest', [[137.3820, -4.8920]]);
   }, []);
 
-  const handleSelectCoordinate = (lon, lat) => {
+  const handleSelectCoordinate = (lon, lat, explicitMode = null) => {
+    const mode = explicitMode || mapPickingMode;
+    if (mode === 'start') {
+      handleSetAsStart([lon, lat]);
+      setMapPickingMode(null);
+      return;
+    }
+    if (mode === 'dest') {
+      handleSetAsDest([lon, lat]);
+      setMapPickingMode(null);
+      return;
+    }
     setSelectedCoord([lon, lat]);
     const data = inspectMarsLocation(lon, lat);
     setInspectionData(data);
     setActiveTab('inspector');
     if (isSidebarCollapsed) setIsSidebarCollapsed(false);
+  };
+
+  const handleFocusStart = (coord) => {
+    setMapCameraAction({ type: 'zoom_to_start', coord, timestamp: Date.now() });
+  };
+
+  const handleFocusRoute = (start, dest) => {
+    setMapCameraAction({ type: 'zoom_to_route', startCoord: start, destCoord: dest, timestamp: Date.now() });
   };
 
   const handleCenterMap = (coord) => {
@@ -356,6 +377,9 @@ export default function App() {
               interactionMode={interactionMode}
               activeTab={activeTab}
               onPlanUnchartedTraverse={handlePlanUnchartedTraverse}
+              mapPickingMode={mapPickingMode}
+              onCancelPicking={() => setMapPickingMode(null)}
+              mapCameraAction={mapCameraAction}
             />
 
             <div className="absolute top-20 right-4 z-20">
@@ -389,6 +413,10 @@ export default function App() {
               onClearRoutePrompt={() => setRoutePrompt(null)}
               onSelectStart={handleSetAsStart}
               onSelectDest={handleSetAsDest}
+              mapPickingMode={mapPickingMode}
+              onSetPickingMode={setMapPickingMode}
+              onFocusStart={handleFocusStart}
+              onFocusRoute={handleFocusRoute}
               selectedProfileId={selectedProfileId}
               onSelectProfile={handleSelectProfile}
               onCalculateRoute={() => calculateTraverseRoutes(startCoord, destCoord, selectedProfileId)}

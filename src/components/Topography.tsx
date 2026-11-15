@@ -20,8 +20,59 @@ export type TopographyDirection = 'forward' | 'backward' | 'left' | 'right';
 export type TopographyHoverEffect = 'lift' | 'trace' | 'light';
 export type TopographyClickEffect = 'pulse' | 'peak' | 'none';
 export type TopographyMarkers = 'none' | 'plus' | 'dots';
+export type TopographyPreset = 'ridgeline' | 'sonar' | 'ember' | 'atlas' | 'alpenglow' | 'dunes' | 'dune' | 'mono';
+
+export const TOPOGRAPHY_PRESETS: Record<string, Partial<TopographyProps>> = {
+  ridgeline: {},
+  sonar: {
+    color: '#2fe0c8',
+    tilt: 24,
+    lineCount: 26,
+    glow: 1,
+    depthOfField: 0.7,
+    hoverEffect: 'light',
+    markers: 'dots',
+    glitch: 0.35
+  },
+  ember: { color: '#ff8a3d', lineCount: 32, elevation: 1.35, scale: 1.2, detail: 0.55, speed: 0.35, glow: 0.8 },
+  atlas: {
+    color: '#ffffff',
+    tilt: 90,
+    lineCount: 16,
+    scale: 0.7,
+    speed: 0.12,
+    direction: 'right',
+    glow: 0.3,
+    depthOfField: 0,
+    hoverEffect: 'trace',
+    markers: 'plus'
+  },
+  alpenglow: { color: '#ff8fa3', elevation: 1.6, scale: 0.9, tilt: 24, lineCount: 24, fog: 0.5, clickEffect: 'peak' },
+  dunes: {
+    color: '#ffc46b',
+    elevation: 0.5,
+    scale: 1.8,
+    lineCount: 34,
+    detail: 0.15,
+    direction: 'right',
+    speed: 0.12,
+    majorLines: false
+  },
+  dune: {
+    color: '#ffc46b',
+    elevation: 0.5,
+    scale: 1.8,
+    lineCount: 34,
+    detail: 0.15,
+    direction: 'right',
+    speed: 0.12,
+    majorLines: false
+  },
+  mono: { color: '#d4d4d8', glow: 0.15, depthOfField: 0, majorLines: false, lineWidth: 1, brightness: 1.1 }
+};
 
 export interface TopographyProps {
+  preset?: TopographyPreset;
   color?: string;
   lineCount?: number;
   lineWidth?: number;
@@ -771,39 +822,43 @@ const viewProjection = ({ eye, f, r, u }: Frame, aspect: number, out: Float32Arr
   return out;
 };
 
-const Topography = ({
-  color = '#4f7cff',
-  lineCount = 22,
-  lineWidth = 1.2,
-  majorLines = true,
-  elevation = 1,
-  foreground = 0.2,
-  scale = 1,
-  detail = 0.35,
-  tilt = 32,
-  speed = 0.25,
-  direction = 'forward',
-  morph = 0.2,
-  glow = 0.6,
-  depthOfField = 0.4,
-  fog = 0.35,
-  brightness = 1,
-  opacity = 1,
-  mouseInteraction = true,
-  hoverEffect = 'lift',
-  mouseRadius = 1,
-  mouseStrength = 0.6,
-  trail = 0.3,
-  parallax = 0.5,
-  clickEffect = 'pulse',
-  markers = 'none',
-  glitch = 0,
-  intro = true,
-  lightMode = false,
-  dpr,
-  className = '',
-  style
-}: TopographyProps) => {
+const Topography = (rawProps: TopographyProps) => {
+  const presetKey = rawProps.preset ? rawProps.preset.toLowerCase() : null;
+  const presetValues = presetKey && TOPOGRAPHY_PRESETS[presetKey] ? TOPOGRAPHY_PRESETS[presetKey] : {};
+  const props = { ...presetValues, ...rawProps };
+  const {
+    color = '#4f7cff',
+    lineCount = 22,
+    lineWidth = 1.2,
+    majorLines = true,
+    elevation = 1,
+    foreground = 0.2,
+    scale = 1,
+    detail = 0.35,
+    tilt = 32,
+    speed = 0.25,
+    direction = 'forward',
+    morph = 0.2,
+    glow = 0.6,
+    depthOfField = 0.4,
+    fog = 0.35,
+    brightness = 1,
+    opacity = 1,
+    mouseInteraction = true,
+    hoverEffect = 'lift',
+    mouseRadius = 1,
+    mouseStrength = 0.6,
+    trail = 0.3,
+    parallax = 0.5,
+    clickEffect = 'pulse',
+    markers = 'none',
+    glitch = 0,
+    intro = true,
+    lightMode = false,
+    dpr,
+    className = '',
+    style
+  } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wakeRef = useRef<(() => void) | null>(null);
