@@ -187,12 +187,9 @@ export default function App() {
     } else {
       setRoutePrompt({
         type: 'both_set',
-        message: '✓ Destination target locked! Both waypoints set. Calculating route...'
+        message: '✓ Destination target locked! Both waypoints set. Ready for route planning.'
       });
       calculateTraverseRoutes(startCoord, coord, selectedProfileId);
-      setTimeout(() => {
-        setActiveTab('planner');
-      }, 450);
     }
   };
 

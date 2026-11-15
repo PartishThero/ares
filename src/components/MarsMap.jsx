@@ -27,11 +27,12 @@ import {
   Mountain, 
   Layers, 
   Maximize2,
-  Crosshair,
+  Crosshair as CrosshairIcon,
   Filter,
   MapPin,
   Sparkles
 } from 'lucide-react';
+import Crosshair from './Crosshair';
 
 export default function MarsMap({
   activeLayerId,
@@ -56,6 +57,7 @@ export default function MarsMap({
   mapCameraAction = null
 }) {
   const mapElement = useRef(null);
+  const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const baseProceduralLayerRef = useRef(null);
   const nasaTileLayerRef = useRef(null);
@@ -567,21 +569,30 @@ export default function MarsMap({
   };
 
   return (
-    <div className={`relative w-full h-full bg-[#17191c] overflow-hidden select-none ${
-      mapPickingMode
-        ? 'cursor-crosshair'
-        : interactionMode === 'explore_uncharted'
-        ? 'cursor-crosshair'
-        : activeTab === 'inspector'
-        ? 'inspector-aim-mode'
-        : 'cursor-default'
-    }`}>
+    <div 
+      ref={mapContainerRef}
+      className="relative w-full h-full bg-[#17191c] overflow-hidden select-none"
+    >
       <div ref={mapElement} className="w-full h-full" />
+
+      {/* ReactBits Dynamic Aerospace Crosshair Cursor with Live Martian Coordinates */}
+      <Crosshair
+        containerRef={mapContainerRef}
+        mapRef={mapRef}
+        active={activeTab === 'inspector' || Boolean(mapPickingMode) || interactionMode === 'explore_uncharted'}
+        color="#ff7a30"
+        thickness={1}
+        opacity={0.85}
+        gap={10}
+        showCoordinates={true}
+        clickPulse={true}
+        hideCursor={true}
+      />
 
       {/* Map Picking Active Prompt Banner */}
       {mapPickingMode && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-[#ff7a30] text-black font-mono text-xs font-bold shadow-glow-accent flex items-center space-x-2.5 pointer-events-auto border border-black/20 animate-pulse">
-          <Crosshair className="w-4 h-4 text-black" />
+          <CrosshairIcon className="w-4 h-4 text-black" />
           <span>
             {mapPickingMode === 'start'
               ? 'CLICK MAP TO SET START POINT (EVA BASE)'
@@ -602,7 +613,7 @@ export default function MarsMap({
       {/* Tactical Inspector Reticle Active Prompt */}
       {!mapPickingMode && activeTab === 'inspector' && interactionMode !== 'explore_uncharted' && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-10 px-3.5 py-1.5 rounded-xl bg-ares-surface/85 backdrop-blur-md border border-ares-accent/40 text-xs font-mono shadow-panel flex items-center space-x-2 pointer-events-none">
-          <Crosshair className="w-3.5 h-3.5 text-ares-accent animate-pulse" />
+          <CrosshairIcon className="w-3.5 h-3.5 text-ares-accent animate-pulse" />
           <span className="text-ares-accent font-bold uppercase tracking-wider text-[11px]">Tactical Inspector:</span>
           <span className="text-ares-text-muted text-[11px]">Click any point on terrain to inspect localized regional telemetry</span>
         </div>
@@ -610,7 +621,7 @@ export default function MarsMap({
 
       {interactionMode === 'explore_uncharted' && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-xl bg-ares-accent/90 backdrop-blur-md text-ares-bg font-mono text-xs font-bold shadow-panel flex items-center space-x-2 animate-bounce">
-          <Crosshair className="w-4 h-4" />
+          <CrosshairIcon className="w-4 h-4" />
           <span>AUTONOMOUS RECONNAISSANCE: Click anywhere on terrain to compute optimal traverse</span>
         </div>
       )}
