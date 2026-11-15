@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "ingest": "node scripts/ingest_usgs.js",
-    "server": "node server/index.js"
+    "server": "node server/index.js",
+    "verify:usgs": "node scripts/verify_usgs_gazetteer.js"
   },
   "dependencies": {
     "@arcgis/core": "^5.2.4",

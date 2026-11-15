@@ -72,6 +72,7 @@ export default function MarsMap({
   const gazetteerCacheRef = useRef(new Map());
   const lastQueryKeyRef = useRef('');
   const currentZoomRef = useRef(11.5);
+  const loadVisibleGazetteerRef = useRef(null);
 
   const showPOIsRef = useRef(showPOIs);
   showPOIsRef.current = showPOIs;
@@ -96,6 +97,8 @@ export default function MarsMap({
   const [headingDeg, setHeadingDeg] = useState(0);
   const [currentZoom, setCurrentZoom] = useState(11.5);
   const [declutterLevel, setDeclutterLevel] = useState('auto');
+  const declutterLevelRef = useRef(declutterLevel);
+  declutterLevelRef.current = declutterLevel;
 
   useEffect(() => {
     if (!mapElement.current) return;
@@ -273,7 +276,12 @@ export default function MarsMap({
       const pMinLat = Math.max(-90, minY - padY);
       const pMaxLat = Math.min(90, maxY + padY);
 
-      const maxTier = zoom < 5.0 ? 1 : zoom < 8.0 ? 2 : 3;
+      const currentDeclutter = declutterLevelRef.current;
+      const maxTier = currentDeclutter === 'essential'
+        ? 1
+        : currentDeclutter === 'all'
+          ? 3
+          : (zoom < 5.0 ? 1 : zoom < 8.0 ? 2 : 3);
 
       const queryKey = `${pMinLon.toFixed(2)},${pMinLat.toFixed(2)},${pMaxLon.toFixed(2)},${pMaxLat.toFixed(2)}_${maxTier}`;
       if (lastQueryKeyRef.current === queryKey) return;
@@ -350,6 +358,8 @@ export default function MarsMap({
       }
     };
 
+    loadVisibleGazetteerRef.current = loadVisibleGazetteer;
+
     view.on('change:rotation', () => {
       const rot = view.getRotation();
       const deg = Math.round((-rot * 180) / Math.PI) % 360;
@@ -360,7 +370,14 @@ export default function MarsMap({
       const z = view.getZoom() || 11.5;
       setCurrentZoom(z);
       currentZoomRef.current = z;
+      if (gazetteerClusterSourceRef.current) {
+        gazetteerClusterSourceRef.current.setDistance(z >= 9.0 ? 0 : 36);
+      }
     });
+
+    if (gazetteerClusterSourceRef.current) {
+      gazetteerClusterSourceRef.current.setDistance(11.5 >= 9.0 ? 0 : 36);
+    }
 
     map.on('moveend', () => {
       loadVisibleGazetteer();
@@ -531,88 +548,6 @@ export default function MarsMap({
       });
     }
 
-    if (showPOIs) {
-      const allTargets = [...SCIENTIFIC_TARGETS, ...userPOIs];
-      
-      let viewExtent = null;
-      if (mapRef.current && currentZoom >= 6.5) {
-        try {
-          viewExtent = mapRef.current.getView().calculateExtent(mapRef.current.getSize());
-        } catch (_) {}
-      }
-
-      allTargets.forEach((target) => {
-        const tier = target.tier || (target.isUserCreated ? 1 : 2);
-        
-        // Semantic zoom filtering
-        let shouldRender = true;
-        if (declutterLevel === 'essential') {
-          shouldRender = tier === 1 || target.isUserCreated;
-        } else if (declutterLevel === 'all') {
-          shouldRender = true;
-        } else {
-          if (currentZoom < 5.5) {
-            shouldRender = tier === 1 || target.isUserCreated;
-          } else if (currentZoom < 9.0) {
-            shouldRender = tier <= 2 || target.isUserCreated;
-          } else {
-            shouldRender = true;
-          }
-        }
-
-        if (!shouldRender) return;
-
-        // Viewport bounding cull for 60fps performance
-        if (viewExtent) {
-          const [minX, minY, maxX, maxY] = viewExtent;
-          const [lon, lat] = target.coordinates;
-          const pad = 0.5;
-          if (lon < minX - pad || lon > maxX + pad || lat < minY - pad || lat > maxY + pad) {
-            return;
-          }
-        }
-
-        const isUser = target.isUserCreated;
-        const isTier1 = tier === 1;
-        const isLandingSite = target.category === 'Landing Site' || target.name.toLowerCase().includes('landing');
-
-        const feature = new Feature({
-          geometry: new Point(target.coordinates),
-          name: target.name,
-          targetData: target,
-          type: isUser ? 'user_poi' : 'poi'
-        });
-
-        let pinColor = '#38bdf8';
-        if (isUser) pinColor = '#a855f7';
-        else if (isLandingSite) pinColor = '#fbbf24';
-        else if (isTier1) pinColor = '#c47b50';
-        else if (target.category?.includes('Mons') || target.category?.includes('Peak')) pinColor = '#38bdf8';
-        else if (target.category?.includes('Drill')) pinColor = '#91a68b';
-        else pinColor = '#cbd5e1';
-
-        const showLabel = isTier1 || isUser || isLandingSite || currentZoom >= 10.5;
-
-        feature.setStyle(
-          new Style({
-            image: new CircleStyle({
-              radius: isUser ? 6 : isLandingSite ? 6 : isTier1 ? 5 : 3.5,
-              fill: new Fill({ color: pinColor }),
-              stroke: new Stroke({ color: '#ffffff', width: isUser || isLandingSite ? 2 : 1.2 })
-            }),
-            text: showLabel ? new Text({
-              text: target.name,
-              font: `${isTier1 || isLandingSite ? '600 10px' : '500 9px'} "JetBrains Mono", monospace`,
-              fill: new Fill({ color: isUser ? '#d8b4fe' : isLandingSite ? '#fef08a' : '#e8e4dc' }),
-              stroke: new Stroke({ color: '#17191c', width: 3 }),
-              offsetY: isTier1 || isLandingSite ? -12 : -9
-            }) : undefined
-          })
-        );
-        source.addFeature(feature);
-      });
-    }
-
     if (selectedCoord) {
       const selectFeature = new Feature({
         geometry: new Point(selectedCoord),
@@ -629,7 +564,26 @@ export default function MarsMap({
       );
       source.addFeature(selectFeature);
     }
-  }, [showHazards, showPOIs, userPOIs, selectedCoord, currentZoom, declutterLevel]);
+  }, [showHazards, selectedCoord, currentZoom]);
+
+  useEffect(() => {
+    if (gazetteerLayerRef.current) {
+      gazetteerLayerRef.current.setVisible(showPOIs);
+      if (showPOIs) {
+        lastQueryKeyRef.current = '';
+        loadVisibleGazetteerRef.current?.();
+      } else if (gazetteerSourceRef.current) {
+        gazetteerSourceRef.current.clear();
+      }
+    }
+  }, [showPOIs]);
+
+  useEffect(() => {
+    if (showPOIsRef.current) {
+      lastQueryKeyRef.current = '';
+      loadVisibleGazetteerRef.current?.();
+    }
+  }, [declutterLevel, userPOIs]);
 
   useEffect(() => {
     const routeSource = routeSourceRef.current;

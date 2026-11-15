@@ -7,7 +7,8 @@ import {
   queryFeaturesByBbox, 
   searchFeatures, 
   getFeatureTypes, 
-  getFeatureById 
+  getFeatureById,
+  countFeatures
 } from './featuresService.js';
 
 export function handleApiRequest(req, res) {
@@ -46,7 +47,11 @@ export function handleApiRequest(req, res) {
       const types = getFeatureTypes();
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ count: types.length, types }));
+      res.end(JSON.stringify({ 
+        count: types.length, 
+        totalFeatures: countFeatures(), 
+        types 
+      }));
     } catch (err) {
       res.statusCode = 500;
       res.setHeader('Content-Type', 'application/json');

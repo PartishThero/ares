@@ -75,11 +75,25 @@ export function rowToGeoJsonFeature(row) {
  * Parse and validate bounding box string: "minLon,minLat,maxLon,maxLat"
  */
 export function parseBbox(bboxParam) {
-  if (!bboxParam || typeof bboxParam !== 'string') {
+  if (!bboxParam) {
     throw new Error('Bounding box parameter "bbox" is required. Format: minLon,minLat,maxLon,maxLat');
   }
 
-  const parts = bboxParam.split(',').map((p) => parseFloat(p.trim()));
+  let parts;
+  if (Array.isArray(bboxParam)) {
+    parts = bboxParam.map((p) => parseFloat(p));
+  } else if (typeof bboxParam === 'object' && ('minLon' in bboxParam || 'minX' in bboxParam)) {
+    const minX = bboxParam.minLon ?? bboxParam.minX;
+    const minY = bboxParam.minLat ?? bboxParam.minY;
+    const maxX = bboxParam.maxLon ?? bboxParam.maxX;
+    const maxY = bboxParam.maxLat ?? bboxParam.maxY;
+    parts = [minX, minY, maxX, maxY].map(parseFloat);
+  } else if (typeof bboxParam === 'string') {
+    parts = bboxParam.split(',').map((p) => parseFloat(p.trim()));
+  } else {
+    throw new Error('Invalid bbox format. Expected: minLon,minLat,maxLon,maxLat as decimal numbers');
+  }
+
   if (parts.length !== 4 || parts.some((p) => isNaN(p))) {
     throw new Error('Invalid bbox format. Expected: minLon,minLat,maxLon,maxLat as decimal numbers');
   }
@@ -232,4 +246,13 @@ export function getFeatureById(id) {
   const row = db.prepare(`SELECT * FROM features WHERE id = ? OR usgs_id = ?`).get(id, id);
   if (!row) return null;
   return rowToGeoJsonFeature(row);
+}
+
+/**
+ * Get total feature count
+ */
+export function countFeatures() {
+  const db = getDatabase();
+  const row = db.prepare(`SELECT COUNT(*) as total FROM features`).get();
+  return row ? row.total : 0;
 }

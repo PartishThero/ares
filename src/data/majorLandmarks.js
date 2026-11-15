@@ -29,3 +29,4 @@ export const MAJOR_PLANETARY_LANDMARKS = [
   { name: 'Gusev Crater', category: 'Crater', coordinates: [175.4, -14.6], tier: 1 },
   { name: 'Jezero Crater', category: 'Crater', coordinates: [77.45, 18.38], tier: 1 }
 ];
+

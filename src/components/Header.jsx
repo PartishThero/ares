@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Search, 
   MapPin, 
@@ -40,6 +40,8 @@ export default function Header({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [remoteResults, setRemoteResults] = useState([]);
+  const [isLoadingSearch, setIsLoadingSearch] = useState(false);
   const searchContainerRef = useRef(null);
 
   useEffect(() => {
@@ -52,19 +54,81 @@ export default function Header({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredTargets = allTargets.filter((t) => {
-    const q = searchQuery.toLowerCase();
-    const cat = (t.category || '').toLowerCase();
-    const name = (t.name || '').toLowerCase();
-    const matchesQuery = name.includes(q) || cat.includes(q);
-    
-    if (!matchesQuery) return false;
-    if (activeFilter === 'landmarks') return t.tier === 1;
-    if (activeFilter === 'user') return t.isUserCreated;
-    if (activeFilter === 'science') return cat.includes('formation') || cat.includes('stratigraphic') || cat.includes('lakebed') || t.tier <= 2;
-    if (activeFilter === 'drills') return cat.includes('drill');
-    return true;
-  }).slice(0, 30);
+  // Dynamically query USGS Gazetteer API with debouncing and request cancellation
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 2) {
+      setRemoteResults([]);
+      setIsLoadingSearch(false);
+      return;
+    }
+
+    setIsLoadingSearch(true);
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/features/search?q=${encodeURIComponent(query)}&limit=35`, {
+          signal: controller.signal
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && Array.isArray(data.features)) {
+          const formatted = data.features.map((f) => ({
+            id: f.properties.usgs_id || `usgs-${f.id}`,
+            name: f.properties.name || f.properties.clean_name,
+            category: f.properties.category || f.properties.type,
+            coordinates: f.geometry.coordinates,
+            tier: f.properties.tier,
+            diameter: f.properties.diameter_km,
+            origin: f.properties.origin,
+            link: f.properties.link,
+            quadName: f.properties.quad_name,
+            isUSGS: true
+          }));
+          setRemoteResults(formatted);
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('USGS Gazetteer search error:', err);
+        }
+      } finally {
+        setIsLoadingSearch(false);
+      }
+    }, 180);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [searchQuery]);
+
+  const combinedSearchResults = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    const localMatches = allTargets.filter((t) => {
+      if (!q) return true;
+      const cat = (t.category || '').toLowerCase();
+      const name = (t.name || '').toLowerCase();
+      return name.includes(q) || cat.includes(q);
+    });
+
+    const localNames = new Set(localMatches.map((t) => (t.name || '').toLowerCase()));
+    const nonDupeRemote = remoteResults.filter(
+      (r) => !localNames.has((r.name || '').toLowerCase())
+    );
+
+    const merged = [...localMatches, ...nonDupeRemote];
+
+    return merged.filter((t) => {
+      if (activeFilter === 'landmarks') return t.tier === 1;
+      if (activeFilter === 'user') return t.isUserCreated;
+      if (activeFilter === 'science') {
+        const cat = (t.category || '').toLowerCase();
+        return cat.includes('formation') || cat.includes('stratigraphic') || cat.includes('lakebed') || cat.includes('channel') || cat.includes('vallis') || t.tier <= 2;
+      }
+      if (activeFilter === 'drills') return (t.category || '').toLowerCase().includes('drill');
+      return true;
+    }).slice(0, 40);
+  }, [allTargets, remoteResults, searchQuery, activeFilter]);
 
   return (
     <header className="absolute top-3 left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-2.5 pointer-events-none select-none">
@@ -181,12 +245,18 @@ export default function Header({
             </div>
 
             <div className="overflow-y-auto divide-y divide-ares-border/50">
-              {filteredTargets.length === 0 ? (
+              {isLoadingSearch && (
+                <div className="p-2.5 px-3 bg-ares-accent/5 flex items-center justify-between text-xs text-ares-accent font-mono">
+                  <span>Searching USGS Gazetteer & planetary databases...</span>
+                  <span className="animate-spin text-sm">⟳</span>
+                </div>
+              )}
+              {combinedSearchResults.length === 0 ? (
                 <div className="p-4 text-center text-xs text-ares-text-muted font-mono">
-                  No features match "{searchQuery}"
+                  {isLoadingSearch ? 'Querying USGS Gazetteer...' : `No features match "${searchQuery}"`}
                 </div>
               ) : (
-                filteredTargets.map((target) => (
+                combinedSearchResults.map((target) => (
                   <div
                     key={target.id}
                     onClick={() => {
@@ -198,11 +268,19 @@ export default function Header({
                   >
                     <div className="truncate">
                       <div className="text-xs font-semibold text-ares-text flex items-center gap-1.5 truncate">
-                        <MapPin className={`w-3 h-3 shrink-0 ${target.isUserCreated ? 'text-purple-400' : target.tier === 1 ? 'text-ares-accent' : 'text-ares-cyan'}`} />
+                        <MapPin className={`w-3 h-3 shrink-0 ${target.isUserCreated ? 'text-purple-400' : target.tier === 1 ? 'text-ares-accent' : target.isUSGS ? 'text-amber-400' : 'text-ares-cyan'}`} />
                         <span className="truncate">{target.name}</span>
+                        {target.isUSGS && (
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-ares-border/60 text-ares-text-muted font-mono shrink-0">
+                            USGS
+                          </span>
+                        )}
                       </div>
                       <div className="text-[10px] text-ares-text-muted font-mono truncate pl-4.5">
-                        {target.category || 'Surface Feature'} • {target.elevation != null ? `${target.elevation.toLocaleString()} m (MOLA)` : 'MOLA Datum'}
+                        {target.category || 'Surface Feature'}
+                        {target.diameter ? ` • ${Math.round(target.diameter)} km Ø` : ''}
+                        {target.quadName ? ` • ${target.quadName} Quad` : ''}
+                        {target.elevation != null ? ` • ${target.elevation.toLocaleString()} m` : ''}
                       </div>
                     </div>
                     <span className="text-[10px] font-mono text-ares-cyan shrink-0 ml-2">
