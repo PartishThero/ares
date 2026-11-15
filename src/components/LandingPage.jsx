@@ -86,65 +86,67 @@ export default function LandingPage({
       ref={scrollContainerRef}
       className="h-screen w-full bg-ares-bg text-ares-text overflow-y-auto overflow-x-hidden flex flex-col font-sans scroll-smooth"
     >
-      {/* NAVBAR: Minimal Header with Interactive GooeyNav */}
-      <nav className="h-20 sm:h-22 border-b border-white/10 bg-ares-bg/85 backdrop-blur-md sticky top-0 z-50 px-8 sm:px-14 py-4 flex items-center justify-between shrink-0">
-        {/* Left: Clean Brand Logo & Name */}
-        <div className="flex items-center space-x-3 shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-white p-1 flex items-center justify-center overflow-hidden shadow-sm">
-            <img
-              src="/recraft-svg-converter.svg"
-              alt="ARES Logo"
-              className="w-full h-full object-contain"
+      {/* FLOATING POPPED-OUT NAVBAR: Floating Glass Island Capsule */}
+      <header className="fixed top-4 sm:top-5 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] max-w-6xl pointer-events-none">
+        <nav className="w-full h-16 sm:h-18 px-4 sm:px-8 rounded-full border border-white/15 bg-[#12141a]/80 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.08)] flex items-center justify-between pointer-events-auto transition-all">
+          {/* Left: Clean Brand Logo & Name */}
+          <div className="flex items-center space-x-3 shrink-0">
+            <div className="w-8 h-8 rounded-full bg-white p-1 flex items-center justify-center overflow-hidden shadow-sm">
+              <img
+                src="/recraft-svg-converter.svg"
+                alt="ARES Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div className="flex items-baseline space-x-1.5">
+              <span className="font-light text-base sm:text-lg tracking-wide text-white">ARES</span>
+              <span className="font-bold text-base sm:text-lg tracking-tight text-white">Marswalk</span>
+            </div>
+          </div>
+
+          {/* Center: Functional Interactive ReactBits GooeyNav */}
+          <div className="hidden md:flex items-center justify-center">
+            <GooeyNav
+              items={navItems}
+              activeIndex={activeSection}
+              onChange={handleNavChange}
+              theme="dark"
+              color="#ff5a1f"
+              colors={['#ff5a1f', '#ff8a3a', '#ffb020']}
+              particleCount={22}
+              spread={74}
+              gooeyness={0.35}
+              wobble={0.65}
+              frame={false}
+              size="sm"
             />
           </div>
-          <div className="flex items-baseline space-x-1.5">
-            <span className="font-light text-lg tracking-wide text-white">ARES</span>
-            <span className="font-bold text-lg tracking-tight text-white">Marswalk</span>
+
+          {/* Right: Quick Action Pills */}
+          <div className="flex items-center space-x-2 sm:space-x-2.5 shrink-0">
+            <button
+              onClick={onLaunchGlobe || onLaunchApp}
+              className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-full border border-white/20 hover:border-white/50 text-white font-medium text-xs transition-all backdrop-blur-sm cursor-pointer hover:bg-white/5"
+              title="Launch 3D Planetary Globe"
+            >
+              3D Globe
+            </button>
+
+            <button
+              onClick={onLaunchApp}
+              className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-white text-black hover:bg-white/90 font-bold text-xs transition-all cursor-pointer shadow-sm flex items-center space-x-1.5 hover:scale-105 active:scale-95"
+            >
+              <span>Launch 2D Map</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
-        </div>
-
-        {/* Center: Functional Interactive ReactBits GooeyNav */}
-        <div className="hidden md:flex items-center justify-center">
-          <GooeyNav
-            items={navItems}
-            activeIndex={activeSection}
-            onChange={handleNavChange}
-            theme="dark"
-            color="#ff5a1f"
-            colors={['#ff5a1f', '#ff8a3a', '#ffb020']}
-            particleCount={22}
-            spread={74}
-            gooeyness={0.35}
-            wobble={0.65}
-            frame={false}
-            size="sm"
-          />
-        </div>
-
-        {/* Right: Quick Action Pills */}
-        <div className="flex items-center space-x-3 shrink-0">
-          <button
-            onClick={onLaunchGlobe || onLaunchApp}
-            className="px-5 py-2.5 rounded-full border border-white/20 hover:border-white/50 text-white font-medium text-xs transition-all backdrop-blur-sm cursor-pointer hover:bg-white/5"
-            title="Launch 3D Planetary Globe"
-          >
-            3D Globe
-          </button>
-
-          <button
-            onClick={onLaunchApp}
-            className="px-5 py-2.5 rounded-full bg-white text-black hover:bg-white/90 font-bold text-xs transition-all cursor-pointer shadow-sm flex items-center space-x-1.5 hover:scale-105 active:scale-95"
-          >
-            <span>Launch 2D Map</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </nav>
+        </nav>
+      </header>
 
       {/* SECTION 1: FULL-SCREEN CENTERED HERO SECTION (Overview) */}
       <div 
         id="overview" 
-        className="relative w-full h-[calc(100vh-5rem)] min-h-[640px] overflow-hidden shrink-0 flex flex-col justify-between items-center text-center"
+        className="relative w-full h-screen min-h-[680px] overflow-hidden shrink-0 flex flex-col justify-between items-center text-center pt-24 sm:pt-28"
       >
         {/* Centered 3D Topographic Martian Landscape Background (Dune Preset) */}
         <div className="absolute inset-0 pointer-events-auto z-0 overflow-hidden">

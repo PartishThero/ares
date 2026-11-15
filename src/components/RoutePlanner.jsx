@@ -5,6 +5,7 @@ import {
   Sparkles, 
   Compass, 
   MapPin, 
+  CircleDot,
   RotateCcw,
   Navigation,
   ChevronDown,
@@ -112,7 +113,7 @@ export default function RoutePlanner({
   );
 
   useEffect(() => {
-    if (!isEditingStart) {
+    if (!startDropdownOpen && !isEditingStart) {
       if (matchedStartTarget) {
         setStartInputText(matchedStartTarget.name);
       } else if (startCoord) {
@@ -121,10 +122,10 @@ export default function RoutePlanner({
         setStartInputText('');
       }
     }
-  }, [startCoord, matchedStartTarget, isEditingStart]);
+  }, [startCoord, matchedStartTarget, startDropdownOpen, isEditingStart]);
 
   useEffect(() => {
-    if (!isEditingDest) {
+    if (!destDropdownOpen && !isEditingDest) {
       if (matchedDestTarget) {
         setDestInputText(matchedDestTarget.name);
       } else if (destCoord) {
@@ -133,7 +134,7 @@ export default function RoutePlanner({
         setDestInputText('');
       }
     }
-  }, [destCoord, matchedDestTarget, isEditingDest]);
+  }, [destCoord, matchedDestTarget, destDropdownOpen, isEditingDest]);
 
   // Keep active profile expanded when it changes
   useEffect(() => {
@@ -156,8 +157,29 @@ export default function RoutePlanner({
     if (oldStart) onSelectDest(oldStart);
   };
 
+  const handleSelectStart = (t) => {
+    setIsEditingStart(false);
+    setStartInputText(t.name);
+    onSelectStart(t.coordinates);
+    setStartDropdownOpen(false);
+    setCatalogSearch('');
+    if (onFocusStart) onFocusStart(t.coordinates);
+  };
+
+  const handleSelectDest = (t) => {
+    setIsEditingDest(false);
+    setDestInputText(t.name);
+    onSelectDest(t.coordinates);
+    setDestDropdownOpen(false);
+    setCatalogSearch('');
+    if (onFocusRoute) {
+      onFocusRoute(startCoord || t.coordinates, t.coordinates);
+    }
+  };
+
   const handleStartInputChange = (val) => {
     setStartInputText(val);
+    setCatalogSearch(val);
     const parsed = parseMarsCoords(val);
     if (parsed) {
       onSelectStart(parsed);
@@ -167,6 +189,7 @@ export default function RoutePlanner({
 
   const handleDestInputChange = (val) => {
     setDestInputText(val);
+    setCatalogSearch(val);
     const parsed = parseMarsCoords(val);
     if (parsed) {
       onSelectDest(parsed);
@@ -230,96 +253,66 @@ export default function RoutePlanner({
         {/* Start & End Points Container (Google Maps Inspired) */}
         <div className="p-3.5 rounded-2xl bg-ares-surface-alt/80 border border-ares-border shadow-panel space-y-3 relative">
           <div className="flex items-center space-x-3">
-            {/* Left Track Line Visual */}
+            {/* Left Track Line Visual with Real Icons */}
             <div className="flex flex-col items-center justify-between self-stretch py-2 shrink-0">
-              <div 
-                className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${
-                  mapPickingMode === 'start' 
-                    ? 'border-[#ff7a30] bg-[#ff7a30]/30 shadow-glow-accent animate-pulse scale-110' 
-                    : 'border-emerald-400 bg-emerald-400/20'
-                }`}
-                title="Start Point (EVA Base)"
-              />
-              <div className="w-0.5 flex-1 bg-white/20 my-1 rounded-full" />
-              <div 
-                className={`w-3.5 h-3.5 rounded-full flex items-center justify-center transition-all ${
-                  mapPickingMode === 'dest' 
-                    ? 'text-[#ff7a30] animate-bounce scale-110' 
-                    : 'text-[#ff7a30]'
-                }`}
-                title="Destination Target"
-              >
-                <MapPin className="w-4 h-4 fill-[#ff7a30]" />
-              </div>
+              <CircleDot className="w-4 h-4 text-emerald-400 shrink-0" title="Start Point (EVA Base)" />
+              <div className="w-0.5 flex-1 bg-white/20 my-1.5 rounded-full" />
+              <MapPin className="w-4 h-4 text-[#ff7a30] fill-[#ff7a30] shrink-0" title="Destination Target" />
             </div>
 
             {/* Middle: Interactive Input Fields */}
             <div className="flex-1 space-y-2.5">
               {/* Start Point Input Field */}
               <div ref={startContainerRef} className="relative">
-                <div className="flex items-center justify-between text-[10px] font-mono mb-1">
-                  <span className="text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                    <span>Start Point</span>
-                    {mapPickingMode === 'start' && (
-                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#ff7a30]/20 text-[#ff7a30] animate-pulse">
-                        Click Map
-                      </span>
-                    )}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStartDropdownOpen(!startDropdownOpen);
-                      setDestDropdownOpen(false);
-                    }}
-                    className="text-white/60 hover:text-white transition-colors flex items-center gap-0.5 cursor-pointer text-[10px] font-mono"
-                  >
-                    <span>Choose from Catalog</span>
-                    <ChevronDown className="w-3 h-3" />
-                  </button>
+                <div className="flex items-center space-x-1.5 text-[10px] font-mono font-bold text-white/70 mb-1">
+                  <CircleDot className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="uppercase tracking-wider">Start Point</span>
                 </div>
 
                 <div className="relative">
                   <input
                     type="text"
                     value={startInputText}
-                    placeholder="Click to type coords or pick on map..."
+                    placeholder="Click to choose from catalog or type coords..."
+                    onClick={() => {
+                      setStartDropdownOpen(true);
+                      setDestDropdownOpen(false);
+                    }}
                     onFocus={() => {
                       setIsEditingStart(true);
-                      onSetPickingMode?.('start');
+                      setStartDropdownOpen(true);
+                      setDestDropdownOpen(false);
                     }}
                     onBlur={() => {
-                      setTimeout(() => setIsEditingStart(false), 200);
+                      setIsEditingStart(false);
                     }}
                     onChange={(e) => handleStartInputChange(e.target.value)}
-                    className={`w-full bg-ares-bg border rounded-xl pl-3 pr-8 py-2 text-xs font-mono text-ares-text placeholder:text-ares-text-muted/60 focus:outline-none transition-all truncate ${
-                      mapPickingMode === 'start' 
-                        ? 'border-[#ff7a30] ring-1 ring-[#ff7a30]/50 shadow-glow-accent' 
-                        : 'border-ares-border hover:border-ares-border/80'
-                    }`}
+                    className="w-full bg-ares-bg border border-ares-border hover:border-white/20 focus:border-[#ff7a30] rounded-xl px-3 py-2 text-xs font-mono text-ares-text placeholder:text-ares-text-muted/60 focus:outline-none transition-all truncate"
                   />
-                  <button
-                    type="button"
-                    onClick={() => onSetPickingMode?.(mapPickingMode === 'start' ? null : 'start')}
-                    className={`absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors cursor-pointer ${
-                      mapPickingMode === 'start' ? 'text-[#ff7a30] bg-[#ff7a30]/10' : 'text-ares-text-muted hover:text-white'
-                    }`}
-                    title="Click to toggle map selection crosshair"
-                  >
-                    <Crosshair className="w-3.5 h-3.5" />
-                  </button>
                 </div>
 
-                {/* Subtle Catalog Dropdown for Start */}
+                {/* Catalog Dropdown for Start (appears ONLY when clicked) */}
                 {startDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-ares-surface border border-ares-border rounded-xl shadow-2xl p-2 space-y-2 backdrop-blur-xl max-h-56 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-ares-surface/98 border border-ares-border/90 rounded-xl shadow-2xl p-2 space-y-2 backdrop-blur-xl max-h-56 overflow-y-auto">
+                    <div
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onSetPickingMode?.('start');
+                        setStartDropdownOpen(false);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg bg-[#ff7a30]/10 hover:bg-[#ff7a30]/20 border border-[#ff7a30]/30 text-[#ff7a30] transition-colors cursor-pointer flex items-center space-x-2 text-xs font-mono font-medium"
+                    >
+                      <Crosshair className="w-3.5 h-3.5" />
+                      <span>Click on Map to Pick Start Point</span>
+                    </div>
+
                     <div className="relative">
                       <Search className="w-3 h-3 text-ares-text-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         value={catalogSearch}
                         onChange={(e) => setCatalogSearch(e.target.value)}
-                        placeholder="Filter scientific points..."
+                        placeholder="Search points of interest..."
                         className="w-full bg-ares-bg border border-ares-border rounded-lg pl-7 pr-3 py-1 text-[11px] font-mono text-ares-text focus:outline-none focus:border-ares-accent"
                       />
                     </div>
@@ -327,11 +320,9 @@ export default function RoutePlanner({
                       {filteredCatalog.map((t) => (
                         <div
                           key={t.id}
-                          onClick={() => {
-                            onSelectStart(t.coordinates);
-                            setStartDropdownOpen(false);
-                            setCatalogSearch('');
-                            if (onFocusStart) onFocusStart(t.coordinates);
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectStart(t);
                           }}
                           className="px-2.5 py-1.5 rounded-lg hover:bg-ares-surface-alt transition-colors cursor-pointer flex items-center justify-between text-xs"
                         >
@@ -348,69 +339,55 @@ export default function RoutePlanner({
 
               {/* Destination Point Input Field */}
               <div ref={destContainerRef} className="relative">
-                <div className="flex items-center justify-between text-[10px] font-mono mb-1">
-                  <span className="text-[#ff7a30] font-bold uppercase tracking-wider flex items-center gap-1">
-                    <span>Destination Target</span>
-                    {mapPickingMode === 'dest' && (
-                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#ff7a30]/20 text-[#ff7a30] animate-pulse">
-                        Click Map
-                      </span>
-                    )}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDestDropdownOpen(!destDropdownOpen);
-                      setStartDropdownOpen(false);
-                    }}
-                    className="text-white/60 hover:text-white transition-colors flex items-center gap-0.5 cursor-pointer text-[10px] font-mono"
-                  >
-                    <span>Choose from Catalog</span>
-                    <ChevronDown className="w-3 h-3" />
-                  </button>
+                <div className="flex items-center space-x-1.5 text-[10px] font-mono font-bold text-white/70 mb-1">
+                  <MapPin className="w-3.5 h-3.5 text-[#ff7a30] shrink-0" />
+                  <span className="uppercase tracking-wider">Destination Target</span>
                 </div>
 
                 <div className="relative">
                   <input
                     type="text"
                     value={destInputText}
-                    placeholder="Click to type coords or pick on map..."
+                    placeholder="Click to choose from catalog or type coords..."
+                    onClick={() => {
+                      setDestDropdownOpen(true);
+                      setStartDropdownOpen(false);
+                    }}
                     onFocus={() => {
                       setIsEditingDest(true);
-                      onSetPickingMode?.('dest');
+                      setDestDropdownOpen(true);
+                      setStartDropdownOpen(false);
                     }}
                     onBlur={() => {
-                      setTimeout(() => setIsEditingDest(false), 200);
+                      setIsEditingDest(false);
                     }}
                     onChange={(e) => handleDestInputChange(e.target.value)}
-                    className={`w-full bg-ares-bg border rounded-xl pl-3 pr-8 py-2 text-xs font-mono text-ares-text placeholder:text-ares-text-muted/60 focus:outline-none transition-all truncate ${
-                      mapPickingMode === 'dest' 
-                        ? 'border-[#ff7a30] ring-1 ring-[#ff7a30]/50 shadow-glow-accent' 
-                        : 'border-ares-border hover:border-ares-border/80'
-                    }`}
+                    className="w-full bg-ares-bg border border-ares-border hover:border-white/20 focus:border-[#ff7a30] rounded-xl px-3 py-2 text-xs font-mono text-ares-text placeholder:text-ares-text-muted/60 focus:outline-none transition-all truncate"
                   />
-                  <button
-                    type="button"
-                    onClick={() => onSetPickingMode?.(mapPickingMode === 'dest' ? null : 'dest')}
-                    className={`absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors cursor-pointer ${
-                      mapPickingMode === 'dest' ? 'text-[#ff7a30] bg-[#ff7a30]/10' : 'text-ares-text-muted hover:text-white'
-                    }`}
-                    title="Click to toggle map selection crosshair"
-                  >
-                    <Crosshair className="w-3.5 h-3.5" />
-                  </button>
                 </div>
 
-                {/* Subtle Catalog Dropdown for Destination */}
+                {/* Catalog Dropdown for Destination (appears ONLY when clicked) */}
                 {destDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-ares-surface border border-ares-border rounded-xl shadow-2xl p-2 space-y-2 backdrop-blur-xl max-h-56 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-ares-surface/98 border border-ares-border/90 rounded-xl shadow-2xl p-2 space-y-2 backdrop-blur-xl max-h-56 overflow-y-auto">
+                    <div
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onSetPickingMode?.('dest');
+                        setDestDropdownOpen(false);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg bg-[#ff7a30]/10 hover:bg-[#ff7a30]/20 border border-[#ff7a30]/30 text-[#ff7a30] transition-colors cursor-pointer flex items-center space-x-2 text-xs font-mono font-medium"
+                    >
+                      <Crosshair className="w-3.5 h-3.5" />
+                      <span>Click on Map to Pick Destination</span>
+                    </div>
+
                     <div className="relative">
                       <Search className="w-3 h-3 text-ares-text-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         value={catalogSearch}
                         onChange={(e) => setCatalogSearch(e.target.value)}
-                        placeholder="Filter scientific targets..."
+                        placeholder="Search points of interest..."
                         className="w-full bg-ares-bg border border-ares-border rounded-lg pl-7 pr-3 py-1 text-[11px] font-mono text-ares-text focus:outline-none focus:border-ares-accent"
                       />
                     </div>
@@ -418,13 +395,9 @@ export default function RoutePlanner({
                       {filteredCatalog.map((t) => (
                         <div
                           key={t.id}
-                          onClick={() => {
-                            onSelectDest(t.coordinates);
-                            setDestDropdownOpen(false);
-                            setCatalogSearch('');
-                            if (onFocusRoute) {
-                              onFocusRoute(startCoord || t.coordinates, t.coordinates);
-                            }
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectDest(t);
                           }}
                           className="px-2.5 py-1.5 rounded-lg hover:bg-ares-surface-alt transition-colors cursor-pointer flex items-center justify-between text-xs"
                         >
