@@ -72,11 +72,22 @@ export default function Header({
         ref={searchContainerRef}
         className="pointer-events-auto flex items-center gap-2 bg-ares-surface/95 backdrop-blur-md border border-ares-border rounded-2xl shadow-panel px-3 py-1.5 transition-all w-full sm:w-[420px] md:w-[460px] relative"
       >
-        <div className="flex items-center space-x-2 shrink-0">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-ares-accent to-ares-accent-soft p-0.5 flex items-center justify-center shadow-glow-accent">
-            <span className="font-mono font-black text-ares-bg text-xs">A</span>
+        <button
+          type="button"
+          onClick={onToggleLandingPage || onResetView}
+          title="ARES — Return to Mission Overview"
+          className="flex items-center space-x-2 shrink-0 group focus:outline-none cursor-pointer"
+        >
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-ares-accent to-ares-accent-soft p-0.5 flex items-center justify-center shadow-glow-accent group-hover:scale-105 transition-transform">
+            <div className="w-full h-full bg-white rounded-[6px] flex items-center justify-center p-0.5 overflow-hidden">
+              <img
+                src="/recraft-svg-converter.svg"
+                alt="ARES"
+                className="w-full h-full object-contain"
+              />
+            </div>
           </div>
-        </div>
+        </button>
 
         <div className="relative flex-1 flex items-center">
           <Search className="w-3.5 h-3.5 text-ares-text-muted absolute left-2 pointer-events-none" />

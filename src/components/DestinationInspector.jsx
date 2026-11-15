@@ -20,6 +20,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { formatMarsCoords } from '../utils/coordinates';
+import SlideCommit from './SlideCommit.jsx';
 
 export default function DestinationInspector({
   inspectionData,
@@ -398,15 +399,31 @@ export default function DestinationInspector({
           </button>
         </div>
 
-        {/* 1-Click Proceed to Route Planner when both points are set */}
+        {/* ReactBits SlideCommit Micro-Component: Slide to Proceed to Route Planner */}
         {bothWaypointsSet && onSwitchToPlanner && (
-          <button
-            onClick={onSwitchToPlanner}
-            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-ares-accent to-ares-accent-soft hover:opacity-95 text-ares-bg font-bold text-xs transition-all shadow-glow-accent flex items-center justify-center space-x-1.5"
-          >
-            <span>Proceed to Route Planner</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          <div className="w-full pt-1.5">
+            <SlideCommit
+              label="Slide to Route Planner"
+              doneLabel="Route Initialized"
+              width="100%"
+              height={44}
+              radius={12}
+              trackColor="rgba(23, 25, 28, 0.95)"
+              handleColor="#ff7a30"
+              successColor="#10b981"
+              holdMs={1000}
+              onConfirm={() => {
+                return new Promise((resolve) => {
+                  setTimeout(resolve, 400);
+                });
+              }}
+              onDone={() => {
+                setTimeout(() => {
+                  onSwitchToPlanner();
+                }, 350);
+              }}
+            />
+          </div>
         )}
       </div>
 

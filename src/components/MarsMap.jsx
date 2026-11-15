@@ -487,13 +487,13 @@ export default function MarsMap({
   const handleZoomIn = () => {
     if (!mapRef.current) return;
     const view = mapRef.current.getView();
-    view.animate({ zoom: (view.getZoom() || 11.5) + 0.8, duration: 250 });
+    view.animate({ zoom: (view.getZoom() || 11.5) + 0.8, duration: 450 });
   };
 
   const handleZoomOut = () => {
     if (!mapRef.current) return;
     const view = mapRef.current.getView();
-    view.animate({ zoom: (view.getZoom() || 11.5) - 0.8, duration: 250 });
+    view.animate({ zoom: (view.getZoom() || 11.5) - 0.8, duration: 450 });
   };
 
   const handleRotate = (deltaDeg) => {
@@ -586,21 +586,24 @@ export default function MarsMap({
           </div>
         </div>
 
-        <div className="bg-ares-surface/90 backdrop-blur-md border border-ares-border rounded-xl p-1 shadow-panel flex flex-col space-y-1">
+        {/* Tactical Smooth Zoom Controls (+ / -) */}
+        <div className="bg-ares-surface/95 backdrop-blur-md border border-ares-border rounded-xl p-1 shadow-panel flex flex-col space-y-1">
           <button
+            type="button"
             onClick={handleZoomIn}
-            className="w-9 h-9 rounded-lg hover:bg-ares-surface-alt text-ares-text flex items-center justify-center transition-colors"
-            title="Zoom In"
+            className="w-10 h-10 rounded-lg hover:bg-ares-surface-alt text-ares-text hover:text-ares-accent flex items-center justify-center transition-all active:scale-95 cursor-pointer group"
+            title="Zoom In (Smooth Glide)"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
           </button>
-          <div className="h-[1px] bg-ares-border/60 mx-1" />
+          <div className="h-[1px] bg-ares-border/60 mx-1.5" />
           <button
+            type="button"
             onClick={handleZoomOut}
-            className="w-9 h-9 rounded-lg hover:bg-ares-surface-alt text-ares-text flex items-center justify-center transition-colors"
-            title="Zoom Out"
+            className="w-10 h-10 rounded-lg hover:bg-ares-surface-alt text-ares-text hover:text-ares-accent flex items-center justify-center transition-all active:scale-95 cursor-pointer group"
+            title="Zoom Out (Smooth Glide)"
           >
-            <Minus className="w-4 h-4" />
+            <Minus className="w-5 h-5 group-hover:scale-110 transition-transform" />
           </button>
         </div>
 

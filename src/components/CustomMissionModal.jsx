@@ -72,8 +72,12 @@ export default function CustomMissionModal({
       <div className="w-full max-w-xl bg-ares-surface border border-ares-border rounded-2xl shadow-panel overflow-hidden flex flex-col max-h-[92vh]">
         <div className="px-5 py-4 border-b border-ares-border flex items-center justify-between bg-ares-surface-alt/60">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-lg bg-ares-accent/20 border border-ares-accent/40 flex items-center justify-center">
-              <Compass className="w-4 h-4 text-ares-accent" />
+            <div className="w-8 h-8 rounded-lg bg-white border border-ares-accent/40 p-1 flex items-center justify-center shadow-glow-accent overflow-hidden">
+              <img 
+                src="/recraft-svg-converter.svg" 
+                alt="ARES Logo" 
+                className="w-full h-full object-contain" 
+              />
             </div>
             <div>
               <h2 className="text-sm font-bold text-ares-text uppercase tracking-wider">
