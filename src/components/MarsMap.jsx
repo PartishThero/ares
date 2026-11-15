@@ -36,6 +36,9 @@ import {
 } from 'lucide-react';
 import Crosshair from './Crosshair';
 
+// Module-level in-memory cache for static GeoJSON fallback on serverless hosts (Vercel)
+let staticGazetteerFeaturesCache = null;
+
 export default function MarsMap({
   activeLayerId,
   layerOpacity,
@@ -295,9 +298,50 @@ export default function MarsMap({
 
       try {
         const url = `/api/features?bbox=${pMinLon.toFixed(3)},${pMinLat.toFixed(3)},${pMaxLon.toFixed(3)},${pMaxLat.toFixed(3)}&tier=${maxTier}&limit=400`;
-        const res = await fetch(url, { signal: controller.signal });
-        if (!res.ok) return;
-        const data = await res.json();
+        let data = null;
+
+        try {
+          const res = await fetch(url, { signal: controller.signal });
+          if (res.ok) {
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              data = await res.json();
+            }
+          }
+        } catch (fetchErr) {
+          if (fetchErr.name === 'AbortError') throw fetchErr;
+        }
+
+        // Seamless fallback to static CDN GeoJSON (e.g., when deployed on Vercel without active API daemon)
+        if (!data || !Array.isArray(data.features)) {
+          if (!staticGazetteerFeaturesCache) {
+            try {
+              const staticRes = await fetch('/data/usgs_mars_nomenclature.json', { signal: controller.signal });
+              if (staticRes.ok) {
+                const staticData = await staticRes.json();
+                staticGazetteerFeaturesCache = staticData.features || [];
+              }
+            } catch (sErr) {
+              if (sErr.name === 'AbortError') throw sErr;
+            }
+          }
+
+          if (staticGazetteerFeaturesCache) {
+            const isAnti = pMinLon > pMaxLon;
+            const filtered = staticGazetteerFeaturesCache.filter((f) => {
+              const [lon, lat] = f.geometry.coordinates;
+              const inBbox = isAnti
+                ? (lon >= pMinLon || lon <= pMaxLon) && lat >= pMinLat && lat <= pMaxLat
+                : lon >= minX && lon <= maxX && lat >= minY && lat <= maxY;
+              if (!inBbox) return false;
+              if (f.properties.tier > maxTier) return false;
+              return true;
+            }).slice(0, 400);
+
+            data = { features: filtered };
+          }
+        }
+
         if (!data || !Array.isArray(data.features)) return;
 
         data.features.forEach((f) => {

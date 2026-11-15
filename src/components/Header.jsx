@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { SCIENTIFIC_TARGETS } from '../data/scientificTargets.js';
 
+let headerStaticGazetteerCache = null;
+
 export default function Header({
   allTargets = [],
   onSelectTarget,
@@ -67,11 +69,48 @@ export default function Header({
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/features/search?q=${encodeURIComponent(query)}&limit=35`, {
-          signal: controller.signal
-        });
-        if (!res.ok) return;
-        const data = await res.json();
+        let data = null;
+        try {
+          const res = await fetch(`/api/features/search?q=${encodeURIComponent(query)}&limit=35`, {
+            signal: controller.signal
+          });
+          if (res.ok) {
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              data = await res.json();
+            }
+          }
+        } catch (fetchErr) {
+          if (fetchErr.name === 'AbortError') throw fetchErr;
+        }
+
+        // Seamless fallback to static CDN dataset on Vercel deployments
+        if (!data || !Array.isArray(data.features)) {
+          if (!headerStaticGazetteerCache) {
+            try {
+              const sRes = await fetch('/data/usgs_mars_nomenclature.json', { signal: controller.signal });
+              if (sRes.ok) {
+                const sJson = await sRes.json();
+                headerStaticGazetteerCache = sJson.features || [];
+              }
+            } catch (sErr) {
+              if (sErr.name === 'AbortError') throw sErr;
+            }
+          }
+
+          if (headerStaticGazetteerCache) {
+            const qLower = query.toLowerCase();
+            const matched = headerStaticGazetteerCache.filter((f) => {
+              const p = f.properties;
+              return (p.name || '').toLowerCase().includes(qLower) ||
+                     (p.clean_name || '').toLowerCase().includes(qLower) ||
+                     (p.quad_name || '').toLowerCase().includes(qLower);
+            }).slice(0, 35);
+
+            data = { features: matched };
+          }
+        }
+
         if (data && Array.isArray(data.features)) {
           const formatted = data.features.map((f) => ({
             id: f.properties.usgs_id || `usgs-${f.id}`,

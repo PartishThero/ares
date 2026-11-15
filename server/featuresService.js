@@ -1,26 +1,56 @@
 /**
  * USGS Planetary Nomenclature Geospatial Query Service
- * Queries local geospatial SQLite database with R-Tree spatial indexing.
+ * Queries local geospatial SQLite database with R-Tree spatial indexing,
+ * with seamless in-memory GeoJSON fallback for serverless environments (Vercel, Netlify).
  */
 
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { DatabaseSync } from 'node:sqlite';
 import fs from 'fs';
+
+let DatabaseSync = null;
+try {
+  const sqlite = await import('node:sqlite');
+  DatabaseSync = sqlite.DatabaseSync;
+} catch (_) {
+  // node:sqlite not available on older Node runtimes or some serverless workers
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DB_PATH = path.join(__dirname, 'data', 'usgs_mars_nomenclature.db');
+const JSON_PATH = path.join(__dirname, 'data', 'usgs_mars_nomenclature.json');
 
 let dbInstance = null;
+let memoryDataset = null;
+
+export function getMemoryDataset() {
+  if (memoryDataset) return memoryDataset;
+  if (fs.existsSync(JSON_PATH)) {
+    try {
+      const raw = fs.readFileSync(JSON_PATH, 'utf8');
+      const parsed = JSON.parse(raw);
+      memoryDataset = parsed.features || [];
+      return memoryDataset;
+    } catch (e) {
+      console.error('Error loading in-memory USGS dataset:', e);
+    }
+  }
+  return [];
+}
 
 export function getDatabase() {
   if (dbInstance) return dbInstance;
-  if (!fs.existsSync(DB_PATH)) {
-    throw new Error(`USGS Gazetteer database not found at ${DB_PATH}. Run "node scripts/ingest_usgs.js" first.`);
+  if (!DatabaseSync) return null;
+  try {
+    if (fs.existsSync(DB_PATH)) {
+      dbInstance = new DatabaseSync(DB_PATH, { readOnly: true });
+      return dbInstance;
+    }
+  } catch (err) {
+    console.warn('SQLite DatabaseSync initialization bypassed:', err.message);
   }
-  dbInstance = new DatabaseSync(DB_PATH, { readOnly: true });
-  return dbInstance;
+  return null;
 }
 
 /**
@@ -131,6 +161,31 @@ export function queryFeaturesByBbox({
   // Check if query crosses antimeridian (minLon > maxLon)
   const isAntiMeridianCross = minLon > maxLon;
 
+  // Fallback to in-memory GeoJSON if SQLite is unavailable (e.g., Vercel Lambda)
+  if (!db) {
+    const all = getMemoryDataset();
+    const filtered = all.filter((f) => {
+      const [lon, lat] = f.geometry.coordinates;
+      const inBbox = isAntiMeridianCross
+        ? (lon >= minLon || lon <= maxLon) && lat >= minLat && lat <= maxLat
+        : lon >= minLon && lon <= maxLon && lat >= minLat && lat <= maxLat;
+      if (!inBbox) return false;
+      if (type && f.properties.type !== type && f.properties.category !== type) return false;
+      if (tier !== null && tier !== undefined && f.properties.tier > parseInt(tier, 10)) return false;
+      return true;
+    });
+
+    const paginated = filtered.slice(parsedOffset, parsedOffset + parsedLimit);
+    return {
+      type: 'FeatureCollection',
+      bbox: [minLon, minLat, maxLon, maxLat],
+      total: filtered.length,
+      offset: parsedOffset,
+      limit: parsedLimit,
+      features: paginated
+    };
+  }
+
   const buildSubQuery = (boxMinX, boxMaxX, boxMinY, boxMaxY) => {
     let sql = `
       SELECT f.*
@@ -200,6 +255,33 @@ export function searchFeatures({ query, type = null, limit = 30 }) {
   const cleanQ = query.trim().toLowerCase();
   const parsedLimit = Math.max(1, Math.min(100, parseInt(limit, 10) || 30));
 
+  if (!db) {
+    const all = getMemoryDataset();
+    const filtered = all.filter((f) => {
+      const p = f.properties;
+      const name = (p.name || '').toLowerCase();
+      const cleanName = (p.clean_name || '').toLowerCase();
+      const quad = (p.quad_name || '').toLowerCase();
+      const matchesText = name.includes(cleanQ) || cleanName.includes(cleanQ) || quad.includes(cleanQ);
+      if (!matchesText) return false;
+      if (type && p.type !== type && p.category !== type) return false;
+      return true;
+    });
+
+    filtered.sort((a, b) => {
+      if (a.properties.tier !== b.properties.tier) return a.properties.tier - b.properties.tier;
+      return (b.properties.diameter_km || 0) - (a.properties.diameter_km || 0);
+    });
+
+    const sliced = filtered.slice(0, parsedLimit);
+    return {
+      type: 'FeatureCollection',
+      query: cleanQ,
+      total: filtered.length,
+      features: sliced
+    };
+  }
+
   let sql = `
     SELECT * FROM features
     WHERE (name LIKE ? OR clean_name LIKE ? OR quad_name LIKE ?)
@@ -228,6 +310,20 @@ export function searchFeatures({ query, type = null, limit = 30 }) {
  */
 export function getFeatureTypes() {
   const db = getDatabase();
+
+  if (!db) {
+    const all = getMemoryDataset();
+    const counts = new Map();
+    all.forEach((f) => {
+      const t = f.properties.type;
+      const existing = counts.get(t) || { type: t, count: 0, min_tier: f.properties.tier };
+      existing.count++;
+      existing.min_tier = Math.min(existing.min_tier, f.properties.tier);
+      counts.set(t, existing);
+    });
+    return Array.from(counts.values()).sort((a, b) => b.count - a.count);
+  }
+
   const rows = db.prepare(`
     SELECT type, COUNT(*) as count, MIN(tier) as min_tier
     FROM features
@@ -243,6 +339,13 @@ export function getFeatureTypes() {
  */
 export function getFeatureById(id) {
   const db = getDatabase();
+
+  if (!db) {
+    const all = getMemoryDataset();
+    const found = all.find((f) => f.id === id || f.id === parseInt(id, 10) || f.properties.usgs_id === id);
+    return found || null;
+  }
+
   const row = db.prepare(`SELECT * FROM features WHERE id = ? OR usgs_id = ?`).get(id, id);
   if (!row) return null;
   return rowToGeoJsonFeature(row);
@@ -253,6 +356,9 @@ export function getFeatureById(id) {
  */
 export function countFeatures() {
   const db = getDatabase();
+  if (!db) {
+    return getMemoryDataset().length;
+  }
   const row = db.prepare(`SELECT COUNT(*) as total FROM features`).get();
   return row ? row.total : 0;
 }
