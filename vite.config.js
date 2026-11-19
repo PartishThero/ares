@@ -45,15 +45,12 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/ol') || id.includes('node_modules/proj4')) {
-            return 'vendor-openlayers';
-          }
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
-            return 'vendor-react';
-          }
-          if (id.includes('node_modules/lucide-react') || id.includes('node_modules/framer-motion')) {
-            return 'vendor-ui';
-          }
+          if (id.includes('node_modules/@arcgis') || id.includes('node_modules/@esri') || id.includes('node_modules/@zip.js') || id.includes('node_modules/gl-matrix')) return 'vendor-arcgis-3d';
+          if (id.includes('node_modules/ol') || id.includes('node_modules/proj4')) return 'vendor-openlayers';
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/scheduler')) return 'vendor-react';
+          if (id.includes('node_modules/framer-motion') || id.includes('node_modules/motion-')) return 'vendor-motion';
+          if (id.includes('node_modules/lucide-react')) return 'vendor-icons';
+          if (id.includes('node_modules/lenis')) return 'vendor-scroll';
         }
       }
     }

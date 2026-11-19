@@ -2,161 +2,55 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-:root {
-  --bg: #17191c;
-  --surface: #22262b;
-  --surface-alt: #292e34;
-  --text: #e8e4dc;
-  --text-muted: #9a9a95;
-  --accent: #c47b50;
-  --accent-soft: #8f624a;
-  --border: #383c41;
-  --danger: #cf665d;
-  --success: #91a68b;
-  --cyan: #38bdf8;
+:root{--bg:#17191c;--surface:#22262b;--surface-alt:#292e34;--text:#e8e4dc;--text-muted:#9a9a95;--accent:#c47b50;--accent-soft:#8f624a;--border:#383c41;--danger:#cf665d;--success:#91a68b;--cyan:#38bdf8;--neon:#ff7a30;--ease-glide:cubic-bezier(0.22,1,0.36,1);--ease-swift:cubic-bezier(0.32,0.72,0,1);}
+@layer base{
+  html{-webkit-tap-highlight-color:transparent;text-rendering:optimizeLegibility;}
+  html,body,#root{height:100%;overscroll-behavior:none;}
+  ::selection{background:rgba(196,123,80,0.35);color:#fff7ef;}
+  :focus-visible{outline:2px solid rgba(196,123,80,0.75);outline-offset:2px;border-radius:6px;}
+  ::-webkit-scrollbar{width:6px;height:6px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:#2e343b;border-radius:999px;}::-webkit-scrollbar-thumb:hover{background:#8f624a;}
+  *{scrollbar-width:thin;scrollbar-color:#2e343b transparent;}
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important;scroll-behavior:auto!important;}}
 }
-
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+@layer components{
+  .glass-panel{@apply border border-ares-border bg-ares-surface/90 backdrop-blur-xl shadow-panel;}
+  .spotlight-card{--spot-x:-300px;--spot-y:-300px;--spot-border:rgba(255,122,48,0.45);transition:transform 0.35s var(--ease-glide),border-color 0.35s var(--ease-glide),background-color 0.35s var(--ease-glide),box-shadow 0.35s var(--ease-glide);}
+  .spotlight-card::after{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;background:radial-gradient(240px circle at var(--spot-x) var(--spot-y),var(--spot-border),transparent 70%);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity 0.35s var(--ease-glide);pointer-events:none;}
+  .spotlight-card:hover::after,.spotlight-card:focus-visible::after{opacity:1;}
+  .spotlight-card:hover{transform:translateY(-3px);}
+  .spotlight-card:active{transform:translateY(-1px) scale(0.995);}
+  .range-tactical{-webkit-appearance:none;appearance:none;height:5px;border-radius:999px;background:linear-gradient(to right,var(--accent) 0%,var(--accent) var(--fill,50%),#2e343b var(--fill,50%),#2e343b 100%);cursor:pointer;outline-offset:4px;}
+  .range-tactical::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:15px;height:15px;border-radius:50%;background:#e8e4dc;border:2px solid var(--accent);box-shadow:0 0 10px rgba(196,123,80,0.55);transition:transform 0.15s var(--ease-glide),box-shadow 0.15s var(--ease-glide);}
+  .range-tactical::-webkit-slider-thumb:hover{transform:scale(1.2);box-shadow:0 0 16px rgba(196,123,80,0.8);}
+  .range-tactical::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:#e8e4dc;border:2px solid var(--accent);box-shadow:0 0 10px rgba(196,123,80,0.55);}
+  .kbd-chip{@apply inline-flex items-center justify-center rounded-md border border-ares-border bg-ares-bg px-1.5 font-mono text-[10px] text-ares-text-muted;min-width:1.25rem;height:1.25rem;box-shadow:0 1.5px 0 rgba(56,60,65,0.9);}
+  .telemetry-label{@apply font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ares-text-muted;}
 }
-::-webkit-scrollbar-track {
-  background: #17191c;
+@layer utilities{
+  .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none;}.no-scrollbar::-webkit-scrollbar{display:none;}
+  .mask-fade-x{-webkit-mask-image:linear-gradient(to right,transparent,black 12%,black 88%,transparent);mask-image:linear-gradient(to right,transparent,black 12%,black 88%,transparent);}
+  .bg-noise{background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");}
+  .text-glow-accent{text-shadow:0 0 24px rgba(255,122,48,0.45);}
+  .pause-on-hover:hover .animate-marquee{animation-play-state:paused;}
 }
-::-webkit-scrollbar-thumb {
-  background: #2e343b;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3d454f;
-}
-
-/* OpenLayers Custom Overrides for Mission Control HUD */
-.ol-viewport {
-  background-color: #121417 !important;
-}
-
-.ol-zoom {
-  top: 1rem !important;
-  left: 1rem !important;
-  background-color: transparent !important;
-  padding: 0 !important;
-  border: none !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 4px !important;
-}
-
-.ol-zoom button {
-  background: rgba(34, 38, 43, 0.9) !important;
-  color: #e8e4dc !important;
-  border: 1px solid #383c41 !important;
-  border-radius: 6px !important;
-  width: 32px !important;
-  height: 32px !important;
-  font-family: 'JetBrains Mono', monospace !important;
-  font-size: 16px !important;
-  font-weight: 600 !important;
-  line-height: 1 !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
-  transition: all 0.15s ease !important;
-  backdrop-filter: blur(8px) !important;
-}
-
-.ol-zoom button:hover {
-  background: #292e34 !important;
-  border-color: #c47b50 !important;
-  color: #ff9d66 !important;
-}
-
-.ol-attribution {
-  background: rgba(23, 25, 28, 0.85) !important;
-  border-radius: 6px !important;
-  border: 1px solid #383c41 !important;
-  backdrop-filter: blur(8px) !important;
-  bottom: 0.5rem !important;
-  right: 0.5rem !important;
-  font-family: 'JetBrains Mono', monospace !important;
-  font-size: 10px !important;
-}
-
-.ol-attribution ul {
-  color: #9a9a95 !important;
-  padding: 2px 8px !important;
-}
-
-.ol-attribution a {
-  color: #c47b50 !important;
-  text-decoration: none !important;
-}
-
-/* Tactical HUD Elements */
-.hud-corner-tl {
-  position: relative;
-}
-.hud-corner-tl::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 8px;
-  height: 8px;
-  border-top: 2px solid #c47b50;
-  border-left: 2px solid #c47b50;
-  pointer-events: none;
-}
-
-.hud-grid-pattern {
-  background-image: 
-    linear-gradient(to right, rgba(56, 60, 65, 0.15) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(56, 60, 65, 0.15) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
-
-/* ArcGIS 3D Viewport Focus Ring & Border Elimination */
-.esri-view,
-.esri-view:focus,
-.esri-view:focus-visible,
-.esri-view *:focus,
-.esri-view *:focus-visible,
-.esri-view-surface,
-.esri-view-surface:focus,
-.esri-view-surface:focus-visible,
-.esri-view-surface canvas,
-.esri-view-surface canvas:focus,
-.esri-view-surface canvas:focus-visible,
-.esri-view-root,
-.esri-view-root:focus,
-.esri-view-root:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-  border: none !important;
-}
-
-canvas,
-canvas:focus,
-canvas:focus-visible {
-  outline: none !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-
-
-/* ArcGIS 3D Measurement & Elevation Profile Widget Positioning & Theming */
-.esri-ui-bottom-right {
-  bottom: 18px !important;
-  right: 24px !important;
-}
-
-.esri-elevation-profile,
-.esri-direct-line-measurement-3d,
-.esri-area-measurement-3d {
-  border-radius: 16px !important;
-  overflow: hidden !important;
-  border: 1px solid rgba(56, 60, 65, 0.7) !important;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75) !important;
-  backdrop-filter: blur(12px) !important;
-}
+.ol-viewport{background-color:#121417!important;}
+.ol-zoom{top:1rem!important;left:1rem!important;background-color:transparent!important;padding:0!important;border:none!important;display:flex!important;flex-direction:column!important;gap:4px!important;}
+.ol-zoom button{background:rgba(34,38,43,0.9)!important;color:#e8e4dc!important;border:1px solid #383c41!important;border-radius:6px!important;width:32px!important;height:32px!important;font-family:'JetBrains Mono',monospace!important;font-size:16px!important;font-weight:600!important;line-height:1!important;box-shadow:0 4px 12px rgba(0,0,0,0.4)!important;transition:all 0.15s ease!important;backdrop-filter:blur(8px)!important;}
+.ol-zoom button:hover{background:#292e34!important;border-color:#c47b50!important;color:#ff9d66!important;}
+.ol-attribution{background:rgba(23,25,28,0.85)!important;border-radius:6px!important;border:1px solid #383c41!important;backdrop-filter:blur(8px)!important;bottom:0.5rem!important;right:0.5rem!important;font-family:'JetBrains Mono',monospace!important;font-size:10px!important;}
+.ol-attribution ul{color:#9a9a95!important;padding:2px 8px!important;}
+.ol-attribution a{color:#c47b50!important;text-decoration:none!important;}
+.hud-corner-tl{position:relative;}
+.hud-corner-tl::before{content:'';position:absolute;top:0;left:0;width:8px;height:8px;border-top:2px solid #c47b50;border-left:2px solid #c47b50;pointer-events:none;}
+.hud-grid-pattern{background-image:linear-gradient(to right,rgba(56,60,65,0.15) 1px,transparent 1px),linear-gradient(to bottom,rgba(56,60,65,0.15) 1px,transparent 1px);background-size:24px 24px;}
+.esri-view,.esri-view:focus,.esri-view:focus-visible,.esri-view *:focus,.esri-view *:focus-visible,.esri-view-surface,.esri-view-surface:focus,.esri-view-surface:focus-visible,.esri-view-surface canvas,.esri-view-surface canvas:focus,.esri-view-surface canvas:focus-visible,.esri-view-root,.esri-view-root:focus,.esri-view-root:focus-visible{outline:none!important;box-shadow:none!important;border:none!important;}
+canvas,canvas:focus,canvas:focus-visible{outline:none!important;border:none!important;box-shadow:none!important;}
+.esri-ui-bottom-right{bottom:20px!important;right:20px!important;z-index:25!important;}
+.esri-elevation-profile,.esri-direct-line-measurement-3d,.esri-area-measurement-3d{border-radius:16px!important;overflow:hidden!important;border:1px solid rgba(56,60,65,0.8)!important;box-shadow:0 16px 36px rgba(0,0,0,0.8)!important;backdrop-filter:blur(16px)!important;}
+.esri-widget,.esri-widget--panel,.esri-menu,.esri-direct-line-measurement-3d,.esri-area-measurement-3d,.esri-elevation-profile{background-color:rgba(23,25,28,0.96)!important;color:#e8e4dc!important;border-color:#383c41!important;font-family:'JetBrains Mono',monospace!important;}
+.esri-widget button,.esri-button,.esri-direct-line-measurement-3d__action-button,.esri-area-measurement-3d__action-button,.esri-elevation-profile button,calcite-button{background:linear-gradient(to right,#c47b50,#8f624a)!important;background-color:#c47b50!important;color:#17191c!important;font-weight:700!important;border:1px solid rgba(255,122,48,0.4)!important;border-radius:10px!important;transition:all 0.2s ease!important;}
+.esri-widget button:hover,.esri-button:hover,.esri-direct-line-measurement-3d__action-button:hover,.esri-area-measurement-3d__action-button:hover,.esri-elevation-profile button:hover{background:linear-gradient(to right,#ff7a30,#c47b50)!important;background-color:#ff7a30!important;box-shadow:0 0 16px rgba(255,122,48,0.5)!important;}
+.esri-select,.esri-select select,.esri-input{background-color:#1c1f24!important;color:#e8e4dc!important;border:1px solid #383c41!important;border-radius:8px!important;}
+.esri-direct-line-measurement-3d__measurement,.esri-area-measurement-3d__measurement{background-color:transparent!important;color:#e8e4dc!important;}
+.esri-direct-line-measurement-3d__measurement-item-value,.esri-area-measurement-3d__measurement-item-value{color:#ff7a30!important;font-weight:700!important;}
+.esri-direct-line-measurement-3d__measurement-item-title,.esri-area-measurement-3d__measurement-item-title{color:#9a9a95!important;font-size:10px!important;text-transform:uppercase!important;letter-spacing:0.1em!important;}

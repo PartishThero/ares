@@ -35,4 +35,7 @@ dist-ssr
 coverage/
 .cache/
 *.tmp
+*.zip
+auto_commit_pusher.py
+auto_push.log
 

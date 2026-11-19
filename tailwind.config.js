@@ -1,51 +1,14 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  darkMode: 'class',
-  theme: {
-    extend: {
-      colors: {
-        ares: {
-          bg: '#17191c',
-          surface: '#22262b',
-          'surface-alt': '#292e34',
-          border: '#383c41',
-          text: '#e8e4dc',
-          'text-muted': '#9a9a95',
-          accent: '#c47b50',
-          'accent-soft': '#8f624a',
-          danger: '#cf665d',
-          success: '#91a68b',
-          warning: '#e0a96d',
-          cyan: '#38bdf8',
-          neon: '#ff7a30'
-        }
-      },
-      fontFamily: {
-        sans: ['Manrope', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
-      },
-      boxShadow: {
-        'hud': '0 0 20px rgba(196, 123, 80, 0.15), inset 0 0 15px rgba(196, 123, 80, 0.05)',
-        'panel': '0 8px 32px 0 rgba(0, 0, 0, 0.45)',
-        'glow-accent': '0 0 15px rgba(196, 123, 80, 0.4)',
-        'glow-cyan': '0 0 15px rgba(56, 189, 248, 0.4)',
-      },
-      animation: {
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'ping-slow': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
-        'scanline': 'scanline 8s linear infinite',
-      },
-      keyframes: {
-        scanline: {
-          '0%': { transform: 'translateY(-100%)' },
-          '100%': { transform: 'translateY(1000%)' },
-        }
-      }
-    },
-  },
-  plugins: [],
+  content: ["./index.html","./src/**/*.{js,ts,jsx,tsx}"], darkMode:'class',
+  theme:{extend:{
+    colors:{ares:{bg:'#17191c',surface:'#22262b','surface-alt':'#292e34',border:'#383c41',text:'#e8e4dc','text-muted':'#9a9a95',accent:'#c47b50','accent-soft':'#8f624a',danger:'#cf665d',success:'#91a68b',warning:'#e0a96d',cyan:'#38bdf8',neon:'#ff7a30'}},
+    fontFamily:{sans:['Manrope Variable','Manrope','system-ui','-apple-system','sans-serif'],mono:['JetBrains Mono','ui-monospace','SFMono-Regular','Menlo','monospace']},
+    spacing:{4.5:'1.125rem',18:'4.5rem'},
+    boxShadow:{'hud':'0 0 20px rgba(196,123,80,0.15), inset 0 0 15px rgba(196,123,80,0.05)','panel':'0 8px 32px 0 rgba(0,0,0,0.45)','panel-lg':'0 24px 64px -12px rgba(0,0,0,0.65)','glow-accent':'0 0 15px rgba(196,123,80,0.4)','glow-sm':'0 0 10px rgba(196,123,80,0.28)','glow-cyan':'0 0 15px rgba(56,189,248,0.4)','glow-purple':'0 0 15px rgba(168,85,247,0.4)','glow-success':'0 0 15px rgba(145,166,139,0.4)','glow-danger':'0 0 15px rgba(207,102,93,0.4)'},
+    backgroundImage:{'radial-vignette':'radial-gradient(ellipse at center, transparent 0%, rgba(23,25,28,0.5) 74%, rgba(23,25,28,0.92) 100%)','hero-ray':'radial-gradient(ellipse 70% 60% at 50% 92%, rgba(255,122,48,0.22) 0%, rgba(255,255,255,0.08) 35%, transparent 75%)','accent-gradient':'linear-gradient(135deg,#c47b50 0%,#8f624a 100%)','neon-gradient':'linear-gradient(135deg,#ff7a30 0%,#c47b50 100%)'},
+    transitionTimingFunction:{glide:'cubic-bezier(0.22,1,0.36,1)',swift:'cubic-bezier(0.32,0.72,0,1)'},
+    animation:{'pulse-slow':'pulse 3s cubic-bezier(0.4,0,0.6,1) infinite','ping-slow':'ping 2s cubic-bezier(0,0.2,1) infinite','scanline':'scanline 8s linear infinite','spin-slow':'spin 7s linear infinite','marquee':'marquee 32s linear infinite','shimmer':'shimmer 2.2s linear infinite','float-slow':'float-slow 7s ease-in-out infinite','twinkle':'twinkle 4.5s ease-in-out infinite','pulse-ring':'pulse-ring 2.4s cubic-bezier(0.22,1,0.36,1) infinite','scroll-cue':'scroll-cue 2s cubic-bezier(0.22,1,0.36,1) infinite','pop-in':'pop-in 0.22s cubic-bezier(0.22,1,0.36,1)'},
+    keyframes:{scanline:{'0%':{transform:'translateY(-100%)'},'100%':{transform:'translateY(1000%)'}},marquee:{'0%':{transform:'translateX(0)'},'100%':{transform:'translateX(-50%)'}},shimmer:{'0%':{backgroundPosition:'-200% 0'},'100%':{backgroundPosition:'200% 0'}},'float-slow':{'0%,100%':{transform:'translateY(0px)'},'50%':{transform:'translateY(-12px)'}},twinkle:{'0%,100%':{opacity:'0.25'},'50%':{opacity:'0.9'}},'pulse-ring':{'0%':{transform:'scale(1)',opacity:'0.6'},'80%,100%':{transform:'scale(1.9)',opacity:'0'}},'scroll-cue':{'0%':{transform:'translateY(0)',opacity:'0'},'30%':{opacity:'1'},'100%':{transform:'translateY(14px)',opacity:'0'}},'pop-in':{'0%':{opacity:'0',transform:'scale(0.96) translateY(-6px)'},'100%':{opacity:'1',transform:'scale(1) translateY(0)'}}}
+  }},plugins:[]
 }
