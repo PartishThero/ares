@@ -35,11 +35,12 @@ import {
   Sparkles
 } from 'lucide-react';
 import Crosshair from './Crosshair';
+import { AnimatePresence, motion } from 'framer-motion';
 
 // Module-level in-memory cache for static GeoJSON fallback on serverless hosts (Vercel)
 let staticGazetteerFeaturesCache = null;
 
-export default function MarsMap({
+function MarsMap({
   activeLayerId,
   layerOpacity,
   showHazards = true,
@@ -817,8 +818,9 @@ export default function MarsMap({
       />
 
       {/* Map Picking Active Prompt Banner */}
+      <AnimatePresence>
       {mapPickingMode && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-[#ff7a30] text-black font-mono text-xs font-bold shadow-glow-accent flex items-center space-x-2.5 pointer-events-auto border border-black/20 animate-pulse">
+        <motion.div initial={{opacity:0,y:-12,scale:0.95}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:-8,scale:0.96}} transition={{type:'spring',stiffness:420,damping:32}} className="absolute top-20 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-[#ff7a30] text-black font-mono text-xs font-bold shadow-glow-accent flex items-center space-x-2.5 pointer-events-auto border border-black/20">
           <CrosshairIcon className="w-4 h-4 text-black" />
           <span>
             {mapPickingMode === 'start'
@@ -834,20 +836,12 @@ export default function MarsMap({
               ✕
             </button>
           )}
-        </div>
+        </motion.div>
       )}
-
-      {/* Tactical Inspector Reticle Active Prompt */}
-      {!mapPickingMode && activeTab === 'inspector' && interactionMode !== 'explore_uncharted' && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-10 px-3.5 py-1.5 rounded-xl bg-ares-surface/85 backdrop-blur-md border border-ares-accent/40 text-xs font-mono shadow-panel flex items-center space-x-2 pointer-events-none">
-          <CrosshairIcon className="w-3.5 h-3.5 text-ares-accent animate-pulse" />
-          <span className="text-ares-accent font-bold uppercase tracking-wider text-[11px]">Tactical Inspector:</span>
-          <span className="text-ares-text-muted text-[11px]">Click any point on terrain to inspect localized regional telemetry</span>
-        </div>
-      )}
+      </AnimatePresence>
 
       {interactionMode === 'explore_uncharted' && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-xl bg-ares-accent/90 backdrop-blur-md text-ares-bg font-mono text-xs font-bold shadow-panel flex items-center space-x-2 animate-bounce">
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-ares-accent text-ares-bg font-mono text-xs font-bold shadow-glow-accent flex items-center space-x-2 border border-black/20 animate-pop-in">
           <CrosshairIcon className="w-4 h-4" />
           <span>AUTONOMOUS RECONNAISSANCE: Click anywhere on terrain to compute optimal traverse</span>
         </div>
@@ -933,7 +927,7 @@ export default function MarsMap({
         </div>
       </div>
 
-      <div className="absolute bottom-3 left-4 right-4 md:right-auto z-10 flex flex-wrap items-center gap-2 bg-ares-surface/90 backdrop-blur-md border border-ares-border px-3.5 py-1.5 rounded-xl text-xs font-mono shadow-panel">
+      <div className="absolute bottom-3 left-16 sm:left-[465px] right-4 md:right-auto z-10 flex flex-wrap items-center gap-2 bg-ares-surface/90 backdrop-blur-md border border-ares-border px-3.5 py-1.5 rounded-xl text-xs font-mono shadow-panel transition-all">
         <div className="flex items-center space-x-1.5 text-ares-cyan font-semibold">
           <Navigation className="w-3.5 h-3.5" />
           <span>{formatMarsCoords(cursorCoords[0], cursorCoords[1])}</span>
@@ -957,3 +951,5 @@ export default function MarsMap({
     </div>
   );
 }
+
+export default React.memo(MarsMap);

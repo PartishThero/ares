@@ -11,8 +11,10 @@ import {
   Sliders
 } from 'lucide-react';
 import { MARS_MAP_LAYERS } from '../services/marsTrek.js';
+import { AnimatePresence, motion } from 'framer-motion';
+import { popover } from './ui/motion';
 
-export default function LayerControls({
+function LayerControls({
   activeLayerId,
   onSelectLayer,
   layerOpacity,
@@ -49,8 +51,9 @@ export default function LayerControls({
         <span className="hidden sm:inline truncate max-w-[140px]">{activeLayer.name.split(' ')[0]}</span>
       </button>
 
+      <AnimatePresence>
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-80 bg-ares-surface/95 backdrop-blur-md border border-ares-border rounded-2xl shadow-panel overflow-hidden z-40 p-4 space-y-4">
+        <motion.div variants={popover} initial="hidden" animate="visible" exit="exit" className="absolute top-full right-0 mt-2 w-80 origin-top-right bg-ares-surface/95 backdrop-blur-md border border-ares-border rounded-2xl shadow-panel overflow-hidden z-40 p-4 space-y-4">
           <div className="flex items-center justify-between border-b border-ares-border pb-2.5">
             <div className="flex items-center space-x-2">
               <Layers className="w-4 h-4 text-ares-accent" />
@@ -113,7 +116,8 @@ export default function LayerControls({
               step="0.05"
               value={layerOpacity}
               onChange={(e) => onChangeOpacity(parseFloat(e.target.value))}
-              className="w-full accent-ares-accent h-1.5 bg-ares-bg rounded-lg"
+              className="range-tactical w-full"
+              style={{ '--fill': `${((layerOpacity - 0.1) / 0.9) * 100}%` }}
             />
           </div>
 
@@ -147,8 +151,11 @@ export default function LayerControls({
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
+
+export default React.memo(LayerControls);
