@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { collapse } from './ui/motion';
 import { 
   ShieldCheck, 
   Zap, 
@@ -69,7 +71,7 @@ export default function RoutePlanner({
   onFocusStart,
   onFocusRoute
 }) {
-  const [expandedProfiles, setExpandedProfiles] = useState({ [selectedProfileId]: true });
+  const [expandedProfileId, setExpandedProfileId] = useState(selectedProfileId);
   const [startInputText, setStartInputText] = useState('');
   const [destInputText, setDestInputText] = useState('');
   const [isEditingStart, setIsEditingStart] = useState(false);
@@ -136,17 +138,14 @@ export default function RoutePlanner({
     }
   }, [destCoord, matchedDestTarget, destDropdownOpen, isEditingDest]);
 
-  // Keep active profile expanded when it changes
+  // Sync active expanded profile when selected profile changes
   useEffect(() => {
-    setExpandedProfiles((prev) => ({ ...prev, [selectedProfileId]: true }));
+    setExpandedProfileId(selectedProfileId);
   }, [selectedProfileId]);
 
   const toggleExpandProfile = (e, profileId) => {
     e.stopPropagation();
-    setExpandedProfiles((prev) => ({
-      ...prev,
-      [profileId]: !prev[profileId]
-    }));
+    setExpandedProfileId((prev) => (prev === profileId ? null : profileId));
   };
 
   const handleSwapWaypoints = () => {
@@ -209,21 +208,21 @@ export default function RoutePlanner({
     {
       id: 'safest',
       name: 'Safest Traverse',
-      icon: <ShieldCheck className="w-4 h-4 text-ares-success" />,
+      Icon: ShieldCheck,
       desc: 'Avoids steep slopes, crater scarps, and rough sand traps',
       badge: 'Recommended'
     },
     {
       id: 'shortest',
       name: 'Shortest Distance',
-      icon: <Zap className="w-4 h-4 text-ares-warning" />,
+      Icon: Zap,
       desc: 'Takes the most direct path between waypoints to save time',
       badge: 'Fastest'
     },
     {
       id: 'science',
       name: 'Science-Focused',
-      icon: <Sparkles className="w-4 h-4 text-ares-cyan" />,
+      Icon: Sparkles,
       desc: 'Directs the path through geological outcrops and sampling sites',
       badge: 'Max Science'
     }
@@ -461,9 +460,10 @@ export default function RoutePlanner({
         {/* 3 Strategy Profiles Cards */}
         <div className="space-y-2.5">
           {profiles.map((p) => {
-            const isSelected = selectedProfileId === p.id;
+            const isSelected = Boolean(selectedProfileId && selectedProfileId === p.id);
             const profileRoute = allRoutes[p.id];
-            const isExpanded = Boolean(expandedProfiles[p.id]);
+            const isExpanded = Boolean(expandedProfileId === p.id);
+            const ProfileIcon = p.Icon;
 
             const pScore = profileRoute?.metrics
               ? scoreRoute(profileRoute.metrics, p.id === 'science' ? 95 : 75)
@@ -480,18 +480,16 @@ export default function RoutePlanner({
               >
                 {/* Profile Card Header */}
                 <div
-                  onClick={() => onSelectProfile(p.id)}
+                  onClick={() => {
+                    onSelectProfile(p.id);
+                    setExpandedProfileId(p.id);
+                  }}
                   className="p-3 cursor-pointer flex flex-col space-y-1.5"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      {p.icon}
+                      <ProfileIcon className={`w-4 h-4 ${isSelected ? 'text-ares-accent' : 'text-ares-text-muted'}`} />
                       <span className="text-xs font-bold text-ares-text">{p.name}</span>
-                      {isSelected && (
-                        <span className="text-[9px] font-mono text-ares-accent uppercase font-bold px-1.5 py-0.5 rounded bg-ares-accent/20">
-                          Active
-                        </span>
-                      )}
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -520,26 +518,28 @@ export default function RoutePlanner({
                 </div>
 
                 {/* Clean Metrics Grid + One-Liner Asterisk Rationale (Clutter Removed) */}
+                <AnimatePresence initial={false}>
                 {isExpanded && profileRoute && profileRoute.metrics && (
+                  <motion.div variants={collapse} initial="hidden" animate="visible" exit="hidden" className="overflow-hidden">
                   <div className="p-3 bg-ares-bg/85 border-t border-ares-border/60 space-y-2.5">
                     {/* Quick Metrics Grid */}
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div className="p-2 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-                        <span className="text-[10px] text-ares-text-muted block">Distance</span>
+                        <span className="telemetry-label block text-[9px] mb-0.5">Distance</span>
                         <span className="font-bold text-ares-text font-mono">
                           {profileRoute.metrics.totalDistanceKm} km
                         </span>
                       </div>
 
                       <div className="p-2 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-                        <span className="text-[10px] text-ares-text-muted block">Est. Time</span>
+                        <span className="telemetry-label block text-[9px] mb-0.5">Est. Time</span>
                         <span className="font-bold text-ares-cyan font-mono">
                           {profileRoute.metrics.estimatedDurationHours} h
                         </span>
                       </div>
 
                       <div className="p-2 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-                        <span className="text-[10px] text-ares-text-muted block">Hazard</span>
+                        <span className="telemetry-label block text-[9px] mb-0.5">Hazard</span>
                         <span className={`font-bold font-mono ${
                           profileRoute.metrics.hazardExposurePercent > 15 ? 'text-ares-danger' : 'text-ares-success'
                         }`}>
@@ -548,7 +548,7 @@ export default function RoutePlanner({
                       </div>
 
                       <div className="p-2 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-                        <span className="text-[10px] text-ares-text-muted block">Max Slope</span>
+                        <span className="telemetry-label block text-[9px] mb-0.5">Max Slope</span>
                         <span className={`font-bold font-mono ${
                           profileRoute.metrics.maxSlopeDeg > 15 ? 'text-ares-danger' : 'text-emerald-400'
                         }`}>
@@ -557,15 +557,15 @@ export default function RoutePlanner({
                       </div>
 
                       <div className="p-2 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-                        <span className="text-[10px] text-ares-text-muted block">Climb</span>
+                        <span className="telemetry-label block text-[9px] mb-0.5">Climb</span>
                         <span className="font-bold text-ares-text font-mono">
                           +{profileRoute.metrics.elevationGainM} m
                         </span>
                       </div>
 
                       <div className="p-2 rounded-lg bg-ares-surface-alt/70 border border-ares-border">
-                        <span className="text-[10px] text-ares-text-muted block">Base Datum</span>
-                        <span className="font-bold text-ares-cyan font-mono">
+                        <span className="telemetry-label block text-[9px] mb-0.5">Base Datum</span>
+                        <span className="font-bold text-ares-text font-mono">
                           {profileRoute.metrics.baseElevationM} m
                         </span>
                       </div>
@@ -579,7 +579,9 @@ export default function RoutePlanner({
                       </span>
                     </div>
                   </div>
+                  </motion.div>
                 )}
+                </AnimatePresence>
               </div>
             );
           })}
