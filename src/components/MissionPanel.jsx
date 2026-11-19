@@ -61,7 +61,7 @@ export default function MissionPanel({
             <div
               key={mission.id}
               onClick={() => onSelectMission(mission)}
-              className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+              className={`p-3.5 rounded-2xl border transition-all duration-300 ease-glide cursor-pointer hover:-translate-y-0.5 ${
                 isActive
                   ? 'bg-ares-surface-alt border-ares-accent shadow-panel ring-1 ring-ares-accent/50'
                   : 'bg-ares-surface-alt/40 border-ares-border hover:bg-ares-surface-alt/70'
@@ -71,7 +71,7 @@ export default function MissionPanel({
                 <div className="flex items-center space-x-2">
                   <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
                     isCustom 
-                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' 
+                      ? 'bg-ares-warning/20 text-ares-warning border-ares-warning/40' 
                       : 'bg-ares-accent/20 text-ares-accent border-ares-accent/40'
                   }`}>
                     {mission.code}
@@ -82,7 +82,7 @@ export default function MissionPanel({
                     </span>
                   )}
                   {isCustom && (
-                    <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 uppercase">
+                    <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-ares-warning/20 text-ares-warning border border-ares-warning/40 uppercase">
                       Custom
                     </span>
                   )}

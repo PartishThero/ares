@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ModalShell from './ui/ModalShell';
 import { 
   MapPin, 
   X, 
@@ -45,7 +46,6 @@ export default function AddPOIModal({
     }
   }, [initialCoords]);
 
-  if (!isOpen) return null;
 
   const elevation = inspectionData?.elevationMeters != null 
     ? inspectionData.elevationMeters 
@@ -81,14 +81,13 @@ export default function AddPOIModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none font-mono">
-      <div className="w-full max-w-lg bg-ares-surface border border-ares-border rounded-2xl shadow-panel overflow-hidden flex flex-col max-h-[92vh]">
+    <ModalShell isOpen={isOpen} onClose={onClose} maxWidth="max-w-lg" label="Log Astronaut Field Waypoint">
         
         {/* Header */}
         <div className="px-5 py-4 border-b border-ares-border flex items-center justify-between bg-ares-surface-alt/70">
           <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center">
-              <MapPin className="w-4 h-4 text-purple-400" />
+            <div className="w-9 h-9 rounded-xl bg-ares-accent/20 border border-ares-accent/40 flex items-center justify-center">
+              <MapPin className="w-4 h-4 text-ares-accent" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-ares-text uppercase tracking-wider font-sans">
@@ -263,14 +262,13 @@ export default function AddPOIModal({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 hover:opacity-95 text-white font-bold transition-all shadow-glow flex items-center space-x-1.5"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-ares-accent to-ares-accent-soft hover:opacity-95 text-ares-bg font-bold transition-all shadow-glow-sm flex items-center space-x-1.5"
             >
               <Check className="w-4 h-4" />
               <span>Save Waypoint to Map</span>
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </ModalShell>
   );
 }

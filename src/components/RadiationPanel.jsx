@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ModalShell from './ui/ModalShell';
 import { 
   Activity, 
   ShieldAlert, 
@@ -16,13 +17,11 @@ export default function RadiationPanel({ isOpen, onClose, plannedRouteDurationHo
   const [durationHours, setDurationHours] = useState(plannedRouteDurationHours || 3.5);
   const [isSpeActive, setIsSpeActive] = useState(false);
 
-  if (!isOpen) return null;
 
   const evaDosimetry = calculateEvaRadiationDose(durationHours, isSpeActive);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm select-none">
-      <div className="w-full max-w-2xl bg-ares-surface border border-ares-border rounded-2xl shadow-panel overflow-hidden flex flex-col max-h-[90vh]">
+    <ModalShell isOpen={isOpen} onClose={onClose} maxWidth="max-w-2xl" label="MSL RAD Dosimetry and Surface Radiation">
         <div className="px-5 py-4 border-b border-ares-border flex items-center justify-between bg-ares-surface-alt/50">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-lg bg-ares-warning/20 border border-ares-warning/40 flex items-center justify-center">
@@ -80,7 +79,8 @@ export default function RadiationPanel({ isOpen, onClose, plannedRouteDurationHo
                 step="0.5"
                 value={durationHours}
                 onChange={(e) => setDurationHours(parseFloat(e.target.value))}
-                className="flex-1 accent-ares-accent h-1.5 bg-ares-bg rounded-lg"
+                className="range-tactical flex-1"
+                style={{ '--fill': `${((durationHours - 0.5) / 11.5) * 100}%` }}
               />
               <span className="font-bold text-ares-text w-16 text-right">
                 {durationHours} hrs
@@ -168,8 +168,6 @@ export default function RadiationPanel({ isOpen, onClose, plannedRouteDurationHo
             Close Panel
           </button>
         </div>
-      </div>
-    </div>
+      </ModalShell>
   );
 }
-

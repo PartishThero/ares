@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ModalShell from './ui/ModalShell';
 import { 
   Plus, 
   X, 
@@ -35,7 +36,6 @@ export default function CustomMissionModal({
   const [mode, setMode] = useState('Safest');
   const [checkpointsText, setCheckpointsText] = useState('1. Depart Base via northern saddle corridor\n2. Inspect boulder scree at waypoint marker\n3. Ascend to ridge summit and sample veins');
 
-  if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -68,8 +68,7 @@ export default function CustomMissionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm select-none">
-      <div className="w-full max-w-xl bg-ares-surface border border-ares-border rounded-2xl shadow-panel overflow-hidden flex flex-col max-h-[92vh]">
+    <ModalShell isOpen={isOpen} onClose={onClose} maxWidth="max-w-xl" label="Create Custom Marswalk Mission">
         <div className="px-5 py-4 border-b border-ares-border flex items-center justify-between bg-ares-surface-alt/60">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-lg bg-white border border-ares-accent/40 p-1 flex items-center justify-center shadow-glow-accent overflow-hidden">
@@ -239,8 +238,6 @@ export default function CustomMissionModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </ModalShell>
   );
 }
-
