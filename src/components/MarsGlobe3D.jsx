@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import BootScreen from './ui/BootScreen';
 import '@arcgis/core/assets/esri/themes/dark/main.css';
 import Map from '@arcgis/core/Map.js';
 import SceneView from '@arcgis/core/views/SceneView.js';
@@ -268,7 +269,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
     } else if (tool === 'elevation') {
       widget = new ElevationProfile({
         view,
-        profiles: [{ type: 'ground', color: '#00F0FF' }]
+        profiles: [{ type: 'ground', color: '#ff7a30' }]
       });
     }
 
@@ -456,63 +457,59 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
 
       {/* Loading indicator */}
       {!isLoaded && (
-        <div className="absolute inset-0 bg-[#0d0d12]/90 backdrop-blur-md flex flex-col items-center justify-center z-50">
-          <div className="w-12 h-12 rounded-full border-2 border-ares-accent/20 border-t-ares-accent animate-spin mb-4" />
-          <div className="text-ares-accent font-mono text-sm tracking-widest uppercase">
-            Initializing 3D Planetary Ellipsoid
-          </div>
-          <div className="text-ares-text-muted text-xs font-mono mt-1">
-            Loading NASA MDEM200M Elevation Mesh (GCS_Mars_2000)...
-          </div>
+        <div className="absolute inset-0 z-50">
+          <BootScreen title="ARES // 3D PLANETARY ENGINE" subtitle="Initializing 3D Planetary Ellipsoid" detail="Loading NASA MDEM200M Elevation Mesh (GCS_Mars_2000)..." />
         </div>
       )}
 
-      {/* Active Comparison Indicator & 1-Click Dismiss Button */}
-      {(selectedCountry || selectedModel) && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-2.5 bg-ares-surface/95 backdrop-blur-md border border-ares-cyan/60 px-3.5 py-1.5 rounded-xl shadow-glow-cyan pointer-events-auto">
-          <div className="flex items-center space-x-1.5 text-xs font-mono text-ares-cyan">
-            <Box className="w-3.5 h-3.5 text-ares-cyan" />
-            <span className="font-bold">
-              Comparison Active: {selectedCountry ? selectedCountry.name : selectedModel.name}
-            </span>
-            {selectedCountry && <span className="opacity-75">({selectedCountry.areaKm2})</span>}
+      {/* Active Comparison or Measurement Dismiss Pill */}
+      {(selectedCountry || selectedModel || activeMeasureTool) && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-2.5 bg-ares-surface/95 backdrop-blur-md border border-ares-accent/50 px-3.5 py-1.5 rounded-xl shadow-glow-accent pointer-events-auto">
+          <div className="flex items-center space-x-1.5 text-xs font-mono text-ares-accent">
+            {activeMeasureTool ? (
+              <>
+                <Ruler className="w-3.5 h-3.5 text-ares-accent" />
+                <span className="font-bold uppercase tracking-wider">
+                  3D {activeMeasureTool === 'elevation' ? 'Elevation Profile' : activeMeasureTool === 'line' ? 'Distance Measure' : 'Area Measure'} Active
+                </span>
+              </>
+            ) : (
+              <>
+                <Box className="w-3.5 h-3.5 text-ares-accent" />
+                <span className="font-bold">
+                  Scale Overlay: {selectedCountry ? selectedCountry.name : selectedModel?.name}
+                </span>
+                {selectedCountry && <span className="opacity-75">({selectedCountry.areaKm2})</span>}
+              </>
+            )}
           </div>
           <button
             onClick={() => {
-              handleClearCountry();
-              handleClearEarthModel();
+              if (activeMeasureTool) {
+                handleClearMeasurement();
+              } else {
+                handleClearCountry();
+                handleClearEarthModel();
+              }
             }}
-            className="ml-2 px-2 py-0.5 rounded-md bg-ares-warning/20 hover:bg-ares-warning/30 border border-ares-warning/50 text-ares-warning text-[10px] font-mono font-bold transition-all flex items-center space-x-1"
-            title="Remove scale comparison overlay"
+            className="ml-2 px-2 py-0.5 rounded-md bg-ares-bg hover:bg-ares-surface-alt border border-ares-border text-ares-text-muted hover:text-white text-[10px] font-mono font-bold transition-all flex items-center space-x-1 cursor-pointer"
+            title="Dismiss active tool/overlay"
           >
             <X className="w-3 h-3" />
-            <span>Remove</span>
+            <span>Clear</span>
           </button>
         </div>
       )}
 
-      {/* Floating Top Status Ribbon */}
-      <div className="absolute top-20 left-4 z-20 flex items-center space-x-2 bg-ares-surface/85 backdrop-blur-md border border-ares-border px-3 py-1.5 rounded-xl text-xs font-mono shadow-panel pointer-events-auto">
-        <div className="flex items-center space-x-1.5 text-ares-accent">
-          <Globe className="w-3.5 h-3.5 animate-spin-slow" />
-          <span className="font-bold">GCS_Mars_2000</span>
-        </div>
-        <span className="text-ares-border">|</span>
-        <span className="text-ares-text-muted">ALT:</span>
-        <span className="text-ares-cyan font-bold">{currentCameraInfo.alt}</span>
-        <span className="text-ares-border">|</span>
-        <span className="text-ares-text">{currentCameraInfo.lat}° N, {currentCameraInfo.lon}° E</span>
-      </div>
-
       {/* Main Left Tool Strip */}
-      <div className="absolute top-32 left-4 z-20 flex flex-col space-y-2 pointer-events-auto">
+      <div className="absolute top-20 left-4 z-20 flex flex-col space-y-2 pointer-events-auto">
         {/* Quick Travel Menu */}
         <button
           onClick={() => setActiveDrawer(activeDrawer === 'locations' ? null : 'locations')}
           className={`p-2.5 rounded-xl border backdrop-blur-md transition-all flex items-center space-x-2 text-xs font-mono shadow-panel ${
             activeDrawer === 'locations'
-              ? 'bg-ares-accent text-ares-bg font-bold border-ares-accent shadow-glow-accent'
-              : 'bg-ares-surface/90 hover:bg-ares-surface-alt border-ares-border text-ares-text'
+              ? 'bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg font-bold border-ares-accent shadow-glow-accent'
+              : 'bg-ares-surface/90 hover:bg-ares-surface-alt border-ares-border text-ares-text hover:text-ares-accent'
           }`}
           title="Planetary Mission & Rover Locations"
         >
@@ -524,13 +521,13 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
         <button
           onClick={() => setActiveDrawer(activeDrawer === 'measure' ? null : 'measure')}
           className={`p-2.5 rounded-xl border backdrop-blur-md transition-all flex items-center space-x-2 text-xs font-mono shadow-panel ${
-            activeDrawer === 'measure'
-              ? 'bg-ares-cyan text-ares-bg font-bold border-ares-cyan shadow-glow-cyan'
-              : 'bg-ares-surface/90 hover:bg-ares-surface-alt border-ares-border text-ares-text'
+            activeDrawer === 'measure' || activeMeasureTool
+              ? 'bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg font-bold border-ares-accent shadow-glow-accent'
+              : 'bg-ares-surface/90 hover:bg-ares-surface-alt border-ares-border text-ares-text hover:text-ares-accent'
           }`}
           title="3D Direct Distance, Area, & Elevation Profile Tools"
         >
-          <Ruler className="w-4 h-4 text-ares-cyan" />
+          <Ruler className="w-4 h-4 text-ares-accent" />
           <span className="hidden sm:inline font-semibold">3D Measure</span>
         </button>
 
@@ -538,13 +535,13 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
         <button
           onClick={() => setActiveDrawer(activeDrawer === 'compare' ? null : 'compare')}
           className={`p-2.5 rounded-xl border backdrop-blur-md transition-all flex items-center space-x-2 text-xs font-mono shadow-panel ${
-            activeDrawer === 'compare'
-              ? 'bg-purple-500 text-white font-bold border-purple-500 shadow-glow-purple'
-              : 'bg-ares-surface/90 hover:bg-ares-surface-alt border-ares-border text-ares-text'
+            activeDrawer === 'compare' || selectedCountry || selectedModel
+              ? 'bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg font-bold border-ares-accent shadow-glow-accent'
+              : 'bg-ares-surface/90 hover:bg-ares-surface-alt border-ares-border text-ares-text hover:text-ares-accent'
           }`}
           title="Compare Scale with Earth 3D Models and Countries"
         >
-          <Box className="w-4 h-4 text-purple-400" />
+          <Box className="w-4 h-4 text-ares-accent" />
           <span className="hidden sm:inline font-semibold">Scale Comparison</span>
         </button>
 
@@ -553,7 +550,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
           onClick={() => {
             setSpin(!isRotating);
           }}
-          className="p-2.5 rounded-xl bg-ares-surface/90 hover:bg-ares-surface-alt border border-ares-border text-ares-text text-xs font-mono shadow-panel flex items-center space-x-2 transition-all"
+          className="p-2.5 rounded-xl bg-ares-surface/90 hover:bg-ares-surface-alt border border-ares-border text-ares-text text-xs font-mono shadow-panel flex items-center space-x-2 transition-all hover:text-ares-accent"
           title={isRotating ? 'Pause Planetary Rotation' : 'Resume Planetary Rotation'}
         >
           {isRotating ? <Pause className="w-4 h-4 text-ares-warning" /> : <Play className="w-4 h-4 text-ares-accent" />}
@@ -563,7 +560,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
         {/* Recenter Globe */}
         <button
           onClick={handleResetPlanetView}
-          className="p-2.5 rounded-xl bg-ares-surface/90 hover:bg-ares-surface-alt border border-ares-border text-ares-text text-xs font-mono shadow-panel flex items-center space-x-2 transition-all hover:border-ares-accent/60"
+          className="p-2.5 rounded-xl bg-ares-surface/90 hover:bg-ares-surface-alt border border-ares-border text-ares-text text-xs font-mono shadow-panel flex items-center space-x-2 transition-all hover:border-ares-accent/60 hover:text-ares-accent"
           title="Reset to Full Planetary Globe Disc"
         >
           <Compass className="w-4 h-4 text-ares-accent" />
@@ -571,50 +568,15 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
         </button>
       </div>
 
-      {/* Floating Bottom Action: Transition to 2D Tactical View */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex items-center space-x-3 bg-ares-surface/95 backdrop-blur-md border border-ares-border/80 px-4 py-2.5 rounded-2xl shadow-2xl">
-        <div className="flex flex-col">
-          <span className="text-[10px] text-ares-text-muted font-mono uppercase tracking-wider">Tactical Navigation</span>
-          <span className="text-xs text-white font-semibold">Ready for surface route planning</span>
-        </div>
-        <button
-          onClick={() => {
-            if (onSwitchTo2D) {
-              onSwitchTo2D([currentCameraInfo.lon, currentCameraInfo.lat]);
-            }
-          }}
-          className="px-4 py-2 rounded-xl bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg font-bold font-mono text-xs shadow-glow-accent hover:opacity-95 transition-all flex items-center space-x-1.5"
-        >
-          <span>Switch to 2D Surface Map</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      {/* Floating Basemap Switcher & Active Measurement Tool Dock (Bottom Left) */}
-      <div className="absolute bottom-6 left-6 z-20 pointer-events-auto flex items-center space-x-2 transition-all duration-300 ease-out">
-        {/* Quick-Dismiss Badge for Active 3D Measurement Widget */}
-        {activeMeasureTool && (
-          <div className="flex items-center space-x-2 bg-ares-surface/95 backdrop-blur-md border border-ares-cyan/60 px-3 py-1.5 rounded-xl shadow-panel text-xs font-mono text-ares-cyan">
-            <span className="font-bold uppercase tracking-wider text-[11px]">
-              {activeMeasureTool === 'elevation' ? 'Elevation Profile' : activeMeasureTool === 'line' ? '3D Distance' : '3D Area'}
-            </span>
-            <button
-              onClick={handleClearMeasurement}
-              className="p-1 rounded-md hover:bg-ares-warning/20 text-ares-text-muted hover:text-ares-warning transition-all"
-              title="Close & Clear Measurement Widget"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-
+      {/* Floating Bottom Telemetry & Basemap Switcher (Bottom-Left: completely clear of ArcGIS on Bottom-Right) */}
+      <div className="absolute bottom-4 left-4 z-20 pointer-events-auto flex flex-wrap items-center gap-2">
         {/* Basemap Switcher */}
         <div className="flex items-center bg-ares-surface/90 backdrop-blur-md border border-ares-border rounded-xl p-1 shadow-panel">
           <button
             onClick={() => handleToggleBasemap('imagery')}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all flex items-center space-x-1.5 ${
               activeBasemap === 'imagery'
-                ? 'bg-ares-accent text-ares-bg font-bold shadow-glow-accent'
+                ? 'bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg font-bold shadow-glow-accent'
                 : 'text-ares-text-muted hover:text-white'
             }`}
           >
@@ -625,7 +587,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
             onClick={() => handleToggleBasemap('shadedRelief')}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all flex items-center space-x-1.5 ${
               activeBasemap === 'shadedRelief'
-                ? 'bg-ares-accent text-ares-bg font-bold shadow-glow-accent'
+                ? 'bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg font-bold shadow-glow-accent'
                 : 'text-ares-text-muted hover:text-white'
             }`}
           >
@@ -633,6 +595,38 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
             <span>Shaded Relief MOLA</span>
           </button>
         </div>
+
+        {/* Camera Coordinates & Datum HUD */}
+        <div className="flex items-center space-x-2 bg-ares-surface/90 backdrop-blur-md border border-ares-border px-3 py-1.5 rounded-xl text-xs font-mono shadow-panel text-ares-text">
+          <div className="flex items-center space-x-1.5 text-ares-accent">
+            <Globe className="w-3.5 h-3.5 animate-spin-slow" />
+            <span className="font-bold">GCS_Mars_2000</span>
+          </div>
+          <span className="text-ares-border">|</span>
+          <span className="text-ares-text-muted">LON:</span>
+          <span className="font-semibold text-ares-text">{currentCameraInfo.lon}°</span>
+          <span className="text-ares-text-muted">LAT:</span>
+          <span className="font-semibold text-ares-text">{currentCameraInfo.lat}°</span>
+          <span className="text-ares-border">|</span>
+          <span className="text-ares-text-muted">ALT:</span>
+          <span className="text-ares-accent font-bold">{currentCameraInfo.alt}</span>
+        </div>
+      </div>
+
+      {/* Discreet 2D Quick-Switch Pill (Bottom-Center) */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+        <button
+          onClick={() => {
+            if (onSwitchTo2D) {
+              onSwitchTo2D([currentCameraInfo.lon, currentCameraInfo.lat]);
+            }
+          }}
+          className="px-3.5 py-1.5 rounded-full bg-ares-surface/80 hover:bg-ares-surface border border-ares-border hover:border-ares-accent text-ares-text-muted hover:text-white font-mono text-[11px] shadow-panel transition-all flex items-center space-x-1.5 backdrop-blur-md cursor-pointer"
+          title="Switch to 2D Surface Map centered at current viewpoint"
+        >
+          <span>Switch to 2D Tactical</span>
+          <ArrowRight className="w-3 h-3 text-ares-accent" />
+        </button>
       </div>
 
       {/* ================= DRAWERS ================= */}
@@ -661,11 +655,11 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
                   <span className="text-xs font-bold text-white group-hover:text-ares-accent transition-colors">
                     {loc.name}
                   </span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ares-surface border border-ares-border text-ares-cyan">
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ares-surface border border-ares-border text-ares-accent font-semibold">
                     {loc.year}
                   </span>
                 </div>
-                <div className="text-[11px] text-ares-cyan/90 font-mono mt-0.5">{loc.site}</div>
+                <div className="text-[11px] text-ares-text font-mono mt-0.5">{loc.site}</div>
                 <div className="text-[10px] text-ares-text-muted mt-1 leading-relaxed">{loc.description}</div>
               </div>
             ))}
@@ -678,7 +672,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
         <div className="absolute top-20 left-48 z-30 w-80 bg-ares-surface/95 backdrop-blur-xl border border-ares-border rounded-2xl shadow-2xl p-4 pointer-events-auto">
           <div className="flex items-center justify-between pb-3 border-b border-ares-border/70 mb-3">
             <div className="flex items-center space-x-2">
-              <Ruler className="w-4 h-4 text-ares-cyan" />
+              <Ruler className="w-4 h-4 text-ares-accent" />
               <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">3D GIS Measurements</span>
             </div>
             <button onClick={() => setActiveDrawer(null)} className="text-ares-text-muted hover:text-white">
@@ -691,7 +685,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
               onClick={() => handleActivateMeasureTool('line')}
               className={`w-full p-2.5 rounded-xl border text-left transition-all flex items-center justify-between ${
                 activeMeasureTool === 'line'
-                  ? 'bg-ares-cyan text-ares-bg font-bold border-ares-cyan'
+                  ? 'bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg font-bold border-ares-accent shadow-glow-accent'
                   : 'bg-ares-bg/60 hover:bg-ares-surface-alt border-ares-border text-ares-text'
               }`}
             >
@@ -706,7 +700,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
               onClick={() => handleActivateMeasureTool('area')}
               className={`w-full p-2.5 rounded-xl border text-left transition-all flex items-center justify-between ${
                 activeMeasureTool === 'area'
-                  ? 'bg-ares-cyan text-ares-bg font-bold border-ares-cyan'
+                  ? 'bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg font-bold border-ares-accent shadow-glow-accent'
                   : 'bg-ares-bg/60 hover:bg-ares-surface-alt border-ares-border text-ares-text'
               }`}
             >
@@ -721,7 +715,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
               onClick={() => handleActivateMeasureTool('elevation')}
               className={`w-full p-2.5 rounded-xl border text-left transition-all flex items-center justify-between ${
                 activeMeasureTool === 'elevation'
-                  ? 'bg-ares-cyan text-ares-bg font-bold border-ares-cyan'
+                  ? 'bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg font-bold border-ares-accent shadow-glow-accent'
                   : 'bg-ares-bg/60 hover:bg-ares-surface-alt border-ares-border text-ares-text'
               }`}
             >
@@ -749,7 +743,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
         <div className="absolute top-20 left-48 z-30 w-88 max-h-[80vh] overflow-y-auto bg-ares-surface/95 backdrop-blur-xl border border-ares-border rounded-2xl shadow-2xl p-4 pointer-events-auto">
           <div className="flex items-center justify-between pb-3 border-b border-ares-border/70 mb-3">
             <div className="flex items-center space-x-2">
-              <Box className="w-4 h-4 text-purple-400" />
+              <Box className="w-4 h-4 text-ares-accent" />
               <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">Planetary Scale Comparison</span>
             </div>
             <button onClick={() => setActiveDrawer(null)} className="text-ares-text-muted hover:text-white">
@@ -759,7 +753,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
 
           {/* Tab 1: 3D Earth Models on Mars */}
           <div className="mb-4">
-            <div className="text-[11px] font-mono text-purple-400 uppercase tracking-wider font-bold mb-2 flex items-center justify-between">
+            <div className="text-[11px] font-mono text-ares-accent uppercase tracking-wider font-bold mb-2 flex items-center justify-between">
               <span>1:1 Scale 3D Earth Models</span>
               {selectedModel && (
                 <button onClick={handleClearEarthModel} className="text-[10px] text-ares-warning hover:underline">
@@ -774,20 +768,20 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
                   onClick={() => handlePlaceEarthModel(model)}
                   className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
                     selectedModel?.id === model.id
-                      ? 'bg-purple-950/60 border-purple-500 shadow-glow-purple'
+                      ? 'bg-ares-accent/20 border-ares-accent shadow-glow-accent text-white font-bold'
                       : 'bg-ares-bg/60 hover:bg-ares-surface-alt border-ares-border/60'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-white">{model.name}</span>
-                    <span className="text-[10px] font-mono text-purple-300">{model.height}</span>
+                    <span className="text-[10px] font-mono text-ares-accent">{model.height}</span>
                   </div>
                   <div className="text-[10px] text-ares-text-muted mt-0.5">{model.description}</div>
                 </div>
               ))}
             </div>
             {isLoadingModel && (
-              <div className="text-[11px] font-mono text-purple-300 mt-2 text-center animate-pulse">
+              <div className="text-[11px] font-mono text-ares-accent mt-2 text-center animate-pulse">
                 Extracting glTF & placing 3D model on terrain...
               </div>
             )}
@@ -795,7 +789,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
 
           {/* Tab 2: Country Scale Projections */}
           <div className="border-t border-ares-border/70 pt-3">
-            <div className="text-[11px] font-mono text-ares-cyan uppercase tracking-wider font-bold mb-2 flex items-center justify-between">
+            <div className="text-[11px] font-mono text-ares-accent uppercase tracking-wider font-bold mb-2 flex items-center justify-between">
               <span>Country Scale Projection (1.887x)</span>
               {selectedCountry && (
                 <button onClick={handleClearCountry} className="text-[10px] text-ares-warning hover:underline">
@@ -813,7 +807,7 @@ export default function MarsGlobe3D({ onSwitchTo2D, initialCoord = null }) {
                   onClick={() => handleProjectCountry(country)}
                   className={`p-2 rounded-lg border text-left transition-all ${
                     selectedCountry?.id === country.id
-                      ? 'bg-ares-cyan/20 border-ares-cyan text-white font-bold'
+                      ? 'bg-ares-accent/20 border-ares-accent text-white font-bold'
                       : 'bg-ares-bg/50 hover:bg-ares-surface-alt border-ares-border/50 text-ares-text'
                   }`}
                 >
