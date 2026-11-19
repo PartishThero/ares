@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { 
   Mountain, 
   TrendingUp, 
@@ -11,6 +12,7 @@ export default function ElevationProfile({ plannedRoute }) {
   const [hoverPoint, setHoverPoint] = useState(null);
   const [elevationMode, setElevationMode] = useState('mola'); // 'mola' (default) or 'relative'
   const containerRef = useRef(null);
+  const reduceMotion = useReducedMotion();
 
   if (!plannedRoute?.elevationProfile || plannedRoute.elevationProfile.length < 2) {
     return (
@@ -159,8 +161,8 @@ export default function ElevationProfile({ plannedRoute }) {
           </text>
 
           {/* Profile Area & Line */}
-          <path d={areaD} fill="url(#aresTopoGradient)" />
-          <path d={pathD} fill="none" stroke="#FF7A45" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <motion.path key={`area-${pathD.length}`} d={areaD} fill="url(#aresTopoGradient)" initial={reduceMotion?false:{opacity:0}} animate={{opacity:1}} transition={{duration:0.8,delay:0.3}} />
+          <motion.path key={`line-${pathD.length}`} d={pathD} fill="none" stroke="#FF7A45" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" initial={reduceMotion?false:{pathLength:0}} animate={{pathLength:1}} transition={{duration:1.1,ease:[0.22,1,0.36,1]}} />
 
           {/* Slope Sample Markers */}
           {svgPoints.map((pt, idx) => {
@@ -188,7 +190,7 @@ export default function ElevationProfile({ plannedRoute }) {
                 y1={padTop}
                 x2={hoverPoint.x}
                 y2={padTop + chartH}
-                stroke="#00F0FF"
+                stroke="#ff7a30"
                 strokeWidth="1.2"
                 strokeDasharray="2,2"
               />
@@ -196,7 +198,7 @@ export default function ElevationProfile({ plannedRoute }) {
                 cx={hoverPoint.x}
                 cy={hoverPoint.y}
                 r="5"
-                fill="#00F0FF"
+                fill="#ff7a30"
                 stroke="#ffffff"
                 strokeWidth="1.5"
               />
@@ -234,73 +236,73 @@ export default function ElevationProfile({ plannedRoute }) {
       {/* 2. Slope Grade Legend */}
       <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-mono">
         <div className="p-2 rounded-xl bg-ares-surface-alt/40 border border-ares-border/70 flex items-center justify-center space-x-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-white/70 shadow-sm" />
-          <span className="text-white/80">Nominal (&lt; 8°)</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm" />
+          <span className="text-ares-text">Nominal (&lt; 8°)</span>
         </div>
         <div className="p-2 rounded-xl bg-ares-surface-alt/40 border border-ares-border/70 flex items-center justify-center space-x-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-white/40 shadow-sm" />
-          <span className="text-white/80">Moderate (8–14°)</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-sm" />
+          <span className="text-ares-text">Moderate (8–14°)</span>
         </div>
         <div className="p-2 rounded-xl bg-ares-surface-alt/40 border border-ares-border/70 flex items-center justify-center space-x-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a30] shadow-sm" />
-          <span className="text-white/80">Steep (&gt; 14°)</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-ares-danger shadow-sm" />
+          <span className="text-ares-text">Steep (&gt; 14°)</span>
         </div>
       </div>
 
       {/* 3. Four Core Elevation Metrics */}
       <div className="grid grid-cols-2 gap-2 text-xs">
         {/* Ascent */}
-        <div className="p-3 rounded-xl bg-ares-surface-alt/50 border border-ares-border/80 hover:border-white/20 transition-colors">
-          <div className="flex items-center space-x-1.5 text-white/70 font-medium text-[11px]">
-            <TrendingUp className="w-3.5 h-3.5 text-white/80" />
-            <span>Vertical Climb</span>
+        <div className="p-3 rounded-xl bg-ares-surface-alt/50 border border-ares-border/80 hover:border-ares-accent/50 transition-colors">
+          <div className="flex items-center space-x-1.5 text-ares-text-muted font-medium text-[11px]">
+            <TrendingUp className="w-3.5 h-3.5 text-ares-accent" />
+            <span className="telemetry-label">Vertical Climb</span>
           </div>
-          <div className="text-base font-bold text-white font-mono mt-1">
+          <div className="text-base font-bold text-ares-text font-mono mt-1">
             +{plannedRoute.metrics.elevationGainM} m
           </div>
-          <div className="text-[10px] text-white/45 mt-0.5">
+          <div className="text-[10px] text-ares-text-muted mt-0.5">
             Total cumulative ascent
           </div>
         </div>
 
         {/* Descent */}
-        <div className="p-3 rounded-xl bg-ares-surface-alt/50 border border-ares-border/80 hover:border-white/20 transition-colors">
-          <div className="flex items-center space-x-1.5 text-white/70 font-medium text-[11px]">
-            <TrendingDown className="w-3.5 h-3.5 text-white/80" />
-            <span>Vertical Descent</span>
+        <div className="p-3 rounded-xl bg-ares-surface-alt/50 border border-ares-border/80 hover:border-ares-accent/50 transition-colors">
+          <div className="flex items-center space-x-1.5 text-ares-text-muted font-medium text-[11px]">
+            <TrendingDown className="w-3.5 h-3.5 text-ares-cyan" />
+            <span className="telemetry-label">Vertical Descent</span>
           </div>
-          <div className="text-base font-bold text-white font-mono mt-1">
+          <div className="text-base font-bold text-ares-text font-mono mt-1">
             -{plannedRoute.metrics.elevationLossM} m
           </div>
-          <div className="text-[10px] text-white/45 mt-0.5">
+          <div className="text-[10px] text-ares-text-muted mt-0.5">
             Total cumulative descent
           </div>
         </div>
 
         {/* Peak Slope Grade */}
-        <div className="p-3 rounded-xl bg-ares-surface-alt/50 border border-ares-border/80 hover:border-white/20 transition-colors">
-          <div className="flex items-center space-x-1.5 text-white/70 font-medium text-[11px]">
-            <Angle className="w-3.5 h-3.5 text-white/80" />
-            <span>Steepest Slope</span>
+        <div className="p-3 rounded-xl bg-ares-surface-alt/50 border border-ares-border/80 hover:border-ares-accent/50 transition-colors">
+          <div className="flex items-center space-x-1.5 text-ares-text-muted font-medium text-[11px]">
+            <Angle className="w-3.5 h-3.5 text-ares-warning" />
+            <span className="telemetry-label">Steepest Slope</span>
           </div>
-          <div className="text-base font-bold text-white font-mono mt-1">
+          <div className="text-base font-bold text-ares-text font-mono mt-1">
             {plannedRoute.metrics.maxSlopeDeg}° Grade
           </div>
-          <div className="text-[10px] text-white/45 mt-0.5">
+          <div className="text-[10px] text-ares-text-muted mt-0.5">
             {plannedRoute.metrics.maxSlopeDeg <= 10 ? 'Safe for all rover models' : 'Requires terrain switchbacks'}
           </div>
         </div>
 
         {/* Start Base Datum */}
-        <div className="p-3 rounded-xl bg-ares-surface-alt/50 border border-ares-border/80 hover:border-white/20 transition-colors">
-          <div className="flex items-center space-x-1.5 text-white/70 font-medium text-[11px]">
-            <Globe className="w-3.5 h-3.5 text-white/80" />
-            <span>Departure Datum</span>
+        <div className="p-3 rounded-xl bg-ares-surface-alt/50 border border-ares-border/80 hover:border-ares-accent/50 transition-colors">
+          <div className="flex items-center space-x-1.5 text-ares-text-muted font-medium text-[11px]">
+            <Globe className="w-3.5 h-3.5 text-ares-accent" />
+            <span className="telemetry-label">Departure Datum</span>
           </div>
-          <div className="text-base font-bold text-white font-mono mt-1">
+          <div className="text-base font-bold text-ares-text font-mono mt-1">
             {baseElev.toLocaleString()} m MOLA
           </div>
-          <div className="text-[10px] text-white/45 mt-0.5">
+          <div className="text-[10px] text-ares-text-muted mt-0.5">
             {baseElev < 0 
               ? `${(Math.abs(baseElev) / 1000).toFixed(1)} km below datum areoid` 
               : `+${(baseElev / 1000).toFixed(1)} km above datum`}
