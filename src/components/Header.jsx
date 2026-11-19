@@ -22,7 +22,7 @@ import { SCIENTIFIC_TARGETS } from '../data/scientificTargets.js';
 
 let headerStaticGazetteerCache = null;
 
-export default function Header({
+function Header({
   allTargets = [],
   onSelectTarget,
   marsTime,
@@ -37,7 +37,8 @@ export default function Header({
   onToggleLandingPage,
   isLandingPage = false,
   viewMode = 'map',
-  onChangeViewMode
+  onChangeViewMode,
+  onPrefetchGlobe
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -45,6 +46,7 @@ export default function Header({
   const [remoteResults, setRemoteResults] = useState([]);
   const [isLoadingSearch, setIsLoadingSearch] = useState(false);
   const searchContainerRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -54,6 +56,16 @@ export default function Header({
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag=(e.target?.tagName||'').toLowerCase();
+      const typing=tag==='input'||tag==='textarea'||e.target?.isContentEditable;
+      if(e.key==='/'&&!typing){e.preventDefault();searchInputRef.current?.focus();setIsSearchOpen(true);}
+      else if(e.key==='Escape'){setIsSearchOpen(false);searchInputRef.current?.blur();}
+    };
+    window.addEventListener('keydown',onKey); return ()=>window.removeEventListener('keydown',onKey);
   }, []);
 
   // Dynamically query USGS Gazetteer API with debouncing and request cancellation
@@ -170,16 +182,16 @@ export default function Header({
   }, [allTargets, remoteResults, searchQuery, activeFilter]);
 
   return (
-    <header className="absolute top-3 left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-2.5 pointer-events-none select-none">
+    <header className="absolute top-3 left-3 right-3 z-30 flex items-center justify-between gap-2 pointer-events-none select-none">
       <div 
         ref={searchContainerRef}
-        className="pointer-events-auto flex items-center gap-2 bg-ares-surface/95 backdrop-blur-md border border-ares-border rounded-2xl shadow-panel px-3 py-1.5 transition-all w-full sm:w-[420px] md:w-[460px] relative"
+        className="pointer-events-auto flex items-center bg-ares-surface/95 backdrop-blur-xl border border-ares-border hover:border-ares-border/90 focus-within:border-ares-accent/70 focus-within:shadow-glow-accent rounded-2xl shadow-panel px-3 py-1.5 transition-all w-full sm:w-[420px] md:w-[460px] relative"
       >
         <button
           type="button"
           onClick={onToggleLandingPage || onResetView}
           title="ARES — Return to Mission Overview"
-          className="flex items-center space-x-2 shrink-0 group focus:outline-none cursor-pointer"
+          className="flex items-center space-x-2 shrink-0 group focus:outline-none cursor-pointer mr-1.5"
         >
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-ares-accent to-ares-accent-soft p-0.5 flex items-center justify-center shadow-glow-accent group-hover:scale-105 transition-transform">
             <div className="w-full h-full bg-white rounded-[6px] flex items-center justify-center p-0.5 overflow-hidden">
@@ -193,8 +205,9 @@ export default function Header({
         </button>
 
         <div className="relative flex-1 flex items-center">
-          <Search className="w-3.5 h-3.5 text-ares-text-muted absolute left-2 pointer-events-none" />
+          <Search className="w-3.5 h-3.5 text-ares-text-muted shrink-0 mr-1.5 pointer-events-none" />
           <input
+            ref={searchInputRef}
             type="text"
             value={searchQuery}
             onFocus={() => setIsSearchOpen(true)}
@@ -203,25 +216,28 @@ export default function Header({
               setIsSearchOpen(true);
             }}
             placeholder="Search craters, ridges, drill sites..."
-            className="w-full bg-ares-bg/80 border border-ares-border/70 rounded-xl pl-7 pr-7 py-1.5 text-xs text-ares-text font-mono placeholder:text-ares-text-muted/60 focus:outline-none focus:border-ares-accent"
+            className="w-full bg-transparent border-0 p-0 text-xs text-ares-text font-mono placeholder:text-ares-text-muted/60 focus:outline-none focus:ring-0"
           />
+          {!searchQuery && (<span className="kbd-chip pointer-events-none absolute right-1 hidden sm:inline-flex" aria-hidden="true">/</span>)}
           {searchQuery && (
             <button
               onClick={() => {
                 setSearchQuery('');
                 setIsSearchOpen(false);
               }}
-              className="absolute right-2 text-ares-text-muted hover:text-white"
+              className="absolute right-1 text-ares-text-muted hover:text-white p-0.5"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
 
+        <div className="h-4 w-px bg-ares-border/70 mx-1.5 shrink-0" />
+
         <div className="flex items-center space-x-1 shrink-0">
           <button
             onClick={onOpenDirections}
-            className="p-1.5 rounded-lg bg-ares-surface-alt hover:bg-ares-border border border-ares-border text-ares-accent hover:text-white transition-colors"
+            className="p-1.5 rounded-lg text-ares-text-muted hover:text-white hover:bg-ares-surface-alt transition-colors"
             title="Directions / Route Planner"
           >
             <Navigation className="w-4 h-4" />
@@ -232,7 +248,7 @@ export default function Header({
             className={`p-1.5 rounded-lg border transition-all ${
               interactionMode === 'explore_uncharted'
                 ? 'bg-ares-accent text-ares-bg border-ares-accent animate-pulse font-bold'
-                : 'bg-ares-surface-alt hover:bg-ares-border border-ares-border text-ares-text-muted hover:text-ares-accent'
+                : 'border-transparent text-ares-text-muted hover:text-white hover:bg-ares-surface-alt'
             }`}
             title="Explore Uncharted Sector (Click anywhere on terrain to compute traverse)"
           >
@@ -241,7 +257,7 @@ export default function Header({
 
           <button
             onClick={() => onOpenAddPOI && onOpenAddPOI()}
-            className="p-1.5 rounded-lg bg-ares-surface-alt hover:bg-ares-border border border-ares-border text-purple-400 hover:text-purple-300 transition-colors"
+            className="p-1.5 rounded-lg text-ares-text-muted hover:text-white hover:bg-ares-surface-alt transition-colors"
             title="Add Custom Astronaut Waypoint"
           >
             <Plus className="w-4 h-4" />
@@ -249,43 +265,35 @@ export default function Header({
         </div>
 
         {isSearchOpen && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-ares-surface border border-ares-border rounded-xl shadow-panel overflow-hidden z-40 max-h-80 flex flex-col">
-            <div className="px-3 py-2 bg-ares-surface-alt/70 border-b border-ares-border flex items-center space-x-1.5 overflow-x-auto no-scrollbar text-[10px] font-mono">
-              <button
-                onClick={() => setActiveFilter('all')}
-                className={`px-2 py-0.5 rounded-md transition-colors shrink-0 ${activeFilter === 'all' ? 'bg-ares-accent text-ares-bg font-bold' : 'text-ares-text-muted hover:text-ares-text'}`}
-              >
-                All ({allTargets.length})
-              </button>
-              <button
-                onClick={() => setActiveFilter('landmarks')}
-                className={`px-2 py-0.5 rounded-md transition-colors shrink-0 ${activeFilter === 'landmarks' ? 'bg-ares-accent text-ares-bg font-bold' : 'text-ares-text-muted hover:text-ares-text'}`}
-              >
-                Landmarks
-              </button>
-              <button
-                onClick={() => setActiveFilter('science')}
-                className={`px-2 py-0.5 rounded-md transition-colors shrink-0 ${activeFilter === 'science' ? 'bg-ares-accent text-ares-bg font-bold' : 'text-ares-text-muted hover:text-ares-text'}`}
-              >
-                Science Formations
-              </button>
-              <button
-                onClick={() => setActiveFilter('drills')}
-                className={`px-2 py-0.5 rounded-md transition-colors shrink-0 ${activeFilter === 'drills' ? 'bg-ares-accent text-ares-bg font-bold' : 'text-ares-text-muted hover:text-ares-text'}`}
-              >
-                Drill Samples
-              </button>
-              <button
-                onClick={() => setActiveFilter('user')}
-                className={`px-2 py-0.5 rounded-md transition-colors shrink-0 ${activeFilter === 'user' ? 'bg-ares-accent text-ares-bg font-bold' : 'text-ares-text-muted hover:text-ares-text'}`}
-              >
-                My Waypoints
-              </button>
+          <div className="absolute top-full left-0 right-0 mt-2 bg-ares-surface/98 backdrop-blur-2xl border border-ares-border rounded-2xl shadow-2xl overflow-hidden z-50 max-h-80 flex flex-col animate-pop-in origin-top">
+            <div className="px-3 py-2 bg-ares-surface-alt/70 border-b border-ares-border/60 flex items-center space-x-1.5 overflow-x-auto no-scrollbar text-[11px] font-mono">
+              {[
+                { id: 'all', label: `All (${combinedSearchResults.length})` },
+                { id: 'landmarks', label: 'Landmarks' },
+                { id: 'science', label: 'Science' },
+                { id: 'drills', label: 'Drill Sites' },
+                { id: 'user', label: 'My Waypoints' }
+              ].map((tab) => {
+                const isActive = activeFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveFilter(tab.id)}
+                    className={`px-2.5 py-1 rounded-lg transition-colors shrink-0 text-[11px] font-mono whitespace-nowrap ${
+                      isActive
+                        ? 'bg-white/10 text-white font-semibold border border-white/20'
+                        : 'text-ares-text-muted hover:text-ares-text hover:bg-white/5 border border-transparent'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="overflow-y-auto divide-y divide-ares-border/50">
+            <div className="overflow-y-auto divide-y divide-ares-border/30 max-h-64">
               {isLoadingSearch && (
-                <div className="p-2.5 px-3 bg-ares-accent/5 flex items-center justify-between text-xs text-ares-accent font-mono">
+                <div className="p-2.5 px-3 bg-ares-surface-alt/40 flex items-center justify-between text-xs text-white/70 font-mono">
                   <span>Searching USGS Gazetteer & planetary databases...</span>
                   <span className="animate-spin text-sm">⟳</span>
                 </div>
@@ -303,28 +311,33 @@ export default function Header({
                       setIsSearchOpen(false);
                       setSearchQuery('');
                     }}
-                    className="p-2.5 px-3 hover:bg-ares-surface-alt flex items-center justify-between cursor-pointer transition-colors"
+                    className="p-2.5 px-3.5 hover:bg-ares-surface-alt/80 flex items-center justify-between cursor-pointer transition-colors group"
                   >
-                    <div className="truncate">
-                      <div className="text-xs font-semibold text-ares-text flex items-center gap-1.5 truncate">
-                        <MapPin className={`w-3 h-3 shrink-0 ${target.isUserCreated ? 'text-purple-400' : target.tier === 1 ? 'text-ares-accent' : target.isUSGS ? 'text-amber-400' : 'text-ares-cyan'}`} />
+                    <div className="truncate flex-1 min-w-0 pr-3">
+                      <div className="text-xs font-medium text-ares-text group-hover:text-white flex items-center gap-1.5 truncate">
+                        <MapPin className="w-3.5 h-3.5 text-ares-text-muted shrink-0 group-hover:text-ares-accent transition-colors" />
                         <span className="truncate">{target.name}</span>
                         {target.isUSGS && (
                           <span className="text-[9px] px-1 py-0.2 rounded bg-ares-border/60 text-ares-text-muted font-mono shrink-0">
                             USGS
                           </span>
                         )}
+                        {target.isUserCreated && (
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-ares-accent/20 text-ares-accent font-mono shrink-0">
+                            User
+                          </span>
+                        )}
                       </div>
-                      <div className="text-[10px] text-ares-text-muted font-mono truncate pl-4.5">
+                      <div className="text-[10px] text-ares-text-muted font-mono truncate pl-5 mt-0.5">
                         {target.category || 'Surface Feature'}
                         {target.diameter ? ` • ${Math.round(target.diameter)} km Ø` : ''}
                         {target.quadName ? ` • ${target.quadName} Quad` : ''}
-                        {target.elevation != null ? ` • ${target.elevation.toLocaleString()} m` : ''}
                       </div>
                     </div>
-                    <span className="text-[10px] font-mono text-ares-cyan shrink-0 ml-2">
-                      Jump →
-                    </span>
+                    <div className="flex items-center space-x-1.5 shrink-0 text-[11px] font-mono text-ares-text-muted group-hover:text-ares-accent transition-colors">
+                      <span>{target.elevation != null ? `${target.elevation.toLocaleString()}m` : 'Target'}</span>
+                      <span className="text-xs group-hover:translate-x-0.5 transition-transform">→</span>
+                    </div>
                   </div>
                 ))
               )}
@@ -353,6 +366,8 @@ export default function Header({
           <div className="flex items-center bg-ares-surface/90 backdrop-blur-md border border-ares-border rounded-xl p-0.5 shadow-panel">
             <button
               onClick={() => onChangeViewMode('globe')}
+              onMouseEnter={() => onPrefetchGlobe?.()}
+              onFocus={() => onPrefetchGlobe?.()}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
                 viewMode === 'globe'
                   ? 'bg-gradient-to-r from-ares-accent to-ares-accent-soft text-ares-bg font-bold shadow-glow-accent'
@@ -408,3 +423,5 @@ export default function Header({
     </header>
   );
 }
+
+export default React.memo(Header);
